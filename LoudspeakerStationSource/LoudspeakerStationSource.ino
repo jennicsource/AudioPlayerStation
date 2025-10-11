@@ -64,6 +64,7 @@ HardwareSerial MySerial(1); // define a Serial for UART1
 
 #include <SoftwareSerial.h>
 SoftwareSerial MySerial(UART_RX, UART_TX);
+SoftwareSerial MySerialBack(3, 4, true);
 
 
 void setup() {
@@ -74,6 +75,9 @@ void setup() {
 
   //MySerial.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
   MySerial.begin(1200);
+  delay(200);
+
+  MySerialBack.begin(1200);
   delay(200);
 
   // initialization of the operation variables
@@ -155,15 +159,41 @@ void Limit(int PChannel, int Min, int Max)
 
 
 
-void SendAudioRadioParameter(uint8_t Command, uint16_t ParameterValue)
+struct cmessage
 {
-  uint8_t sbuf[3];
+    uint8_t startbyte;
+    uint8_t command;
+    uint8_t address;
+    uint8_t param1;
+    uint8_t param2;
+};
 
-  sbuf[0] = Command;
-  sbuf[1] = 64 + (ParameterValue / 16) ;
-  sbuf[2] = 64 + (ParameterValue & 0x0F);
 
-  MySerial.write(sbuf, 3);
+
+uint8_t ShouldSend = 0;
+uint8_t sbuf[6];
+
+void SendAudioRadioParameter(uint8_t Command, uint8_t ParameterValue)
+{
+  
+  //cmessage message;
+
+  sbuf[0] = 255;
+  sbuf[1] = 255;
+  sbuf[2] = Command;
+  sbuf[3] = 3;
+  sbuf[4] = ParameterValue;
+  sbuf[5] = 0;
+
+  //memcpy(&sbuf, &message, 5);
+
+  ShouldSend = 1;
+
+  //MySerial.write(sbuf, 6);
+
+  Serial.println(sbuf[2]);
+  Serial.println(sbuf[4]);
+ 
 }
 
 
@@ -173,22 +203,35 @@ void Regulate(uint8_t audiochannelnumber)
   
   // TODO: DUAL!!!!
   
-  uint8_t sbuf[3];
+  
   uint16_t VolumeSend = PValue[ PCHAN_SET_LEVEL_VOLUME1 ] / 10;
 
-  sbuf[0] = 86;
-  sbuf[1] = 64 + (VolumeSend / 16) ;
-  sbuf[2] = 64 + (VolumeSend & 0x0F);
 
-  MySerial.write(sbuf, 3);
+
+  sbuf[0] = 255;
+  sbuf[1] = 255;
+  sbuf[2] = 86;
+  sbuf[3] = 3;
+  sbuf[4] = (uint8_t)VolumeSend;
+  sbuf[5] = 0;
+
+  //memcpy(&sbuf, &message, 5);
+
+  //MySerial.write(sbuf, 6);
+
+  ShouldSend = 1;
+
+  Serial.println(sbuf[2]);
+  Serial.println(sbuf[4]);
 
   PValue[ PCHAN_LEVEL_VOLUME1 ] = PValue[ PCHAN_SET_LEVEL_VOLUME1 ];
+
   Output_ShowValue(OCHAN_LEVEL_VOLUME1, PValue[ PCHAN_LEVEL_VOLUME1 ] / 10);
   Output_ShowEvent(EVENT_MESSAGE_RECEIVED, 700); 
 }
 
 
-
+uint32_t lastSend = 0;
 
 long PeriodMessageVolume = 1000;   // in ms
 long LastTimeMessageVolume = 0;
@@ -253,14 +296,14 @@ void loop() {
 
           case MCHAN_SET_PARAMEQ1_FREQUENCY:
             PValue[PCHAN_SET_PARAMEQ1_FREQUENCY] = Messenger_GetValue(MChannelValueWasReceived);  // message 
-            SendAudioRadioParameter(80, PValue[ PCHAN_SET_PARAMEQ1_FREQUENCY ] / 40);
+            SendAudioRadioParameter(80, PValue[ PCHAN_SET_PARAMEQ1_FREQUENCY ] );
             Output_SetValue(OCHAN_AUDIO_PARAM, PValue[ PCHAN_SET_PARAMEQ1_FREQUENCY ] );
             Output_ShowEvent(EVENT_SHOW_AUDIO_PARAM, 4000);
             break;
 
           case MCHAN_SET_PARAMEQ2_FREQUENCY:
             PValue[PCHAN_SET_PARAMEQ2_FREQUENCY] = Messenger_GetValue(MChannelValueWasReceived);  // message 
-            SendAudioRadioParameter(81, PValue[ PCHAN_SET_PARAMEQ2_FREQUENCY ] / 40);
+            SendAudioRadioParameter(81, PValue[ PCHAN_SET_PARAMEQ2_FREQUENCY ] );
             Output_SetValue(OCHAN_AUDIO_PARAM, PValue[ PCHAN_SET_PARAMEQ2_FREQUENCY ] );
             Output_ShowEvent(EVENT_SHOW_AUDIO_PARAM, 4000);
             break;
@@ -288,7 +331,7 @@ void loop() {
             Output_ShowEvent(EVENT_SHOW_RADIO2, 2000);
             break;
         
-       }
+        }
 
       }
 
@@ -297,10 +340,23 @@ void loop() {
   }
 
 
-  if (MySerial.available() )
+  if (ShouldSend == 1)
   {
-    uint8_t  Returnbyte = MySerial.read();
+    if ( (millis() - lastSend) > 300)
+    {
+      MySerial.write(sbuf, 6);
+      lastSend = millis();
+    }
+  }
 
+  if (MySerialBack.available() )
+  {
+    
+    uint8_t  Returnbyte = MySerialBack.read();
+    Serial.println(Returnbyte);
+    if (Returnbyte == 65) ShouldSend = 0;
+ 
+       /*
     if (SerialReplyExpected == 1)
     {
       Output_ShowValue(OCHAN_LEVEL_VOLUME1, Returnbyte - 64);
@@ -310,18 +366,27 @@ void loop() {
 
       SerialReplyExpected = 0;
     }
+    */
   }
 
   // --- Check for serial commands
   if (Serial.available()) 
   {
+    
+    /*
     uint8_t rBuf[3];
+
+    sbuf[0] = Command;
+    sbuf[1] = 64 + (ParameterValue / 16) ;
+    sbuf[2] = 64 + (ParameterValue & 0x0F);
+
 
     Serial.readBytes(rBuf, 3);
 
     MySerial.write(rBuf, 3);
 
     SerialReplyExpected = 1;
+    */
   }
 
 

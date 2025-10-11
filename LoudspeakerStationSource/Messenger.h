@@ -130,7 +130,7 @@ void Messenger_TransmitValue(int Channel)
   
   Protocol_SendValue("AVS/Station/" + String(MessengerStationNumber) + Messenger_Path[Channel], Messenger_Value[Channel] );
 
-  Serial.println("AVS/Station/" + String(MessengerStationNumber) + Messenger_Path[Channel]);
+  //Serial.println("AVS/Station/" + String(MessengerStationNumber) + Messenger_Path[Channel]);
 }
 
 

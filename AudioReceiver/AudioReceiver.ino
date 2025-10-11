@@ -27,41 +27,11 @@ int32_t exmBuffer[32];
 #include <SoftwareSerial.h>
 
 SoftwareSerial MySerial2(UART_RX_2, UART_TX_2, true);
+SoftwareSerial MySerialBack(17, 18);
 
 uint8_t radiosuccess2;
 
 
-/*
-// the 7 channels for the messages to be received and to be sent out
-#define MCHAN_SET_LEVEL_VOLUME1  2
-#define MCHAN_SET_LEVEL_VOLUME2  3
-#define MCHAN_SET_RELAY          1
-
-//void MessageReceivedValue(int Message, int Value);
-//#include "Messenger.h"
-
-#include "Network.h"
-
-TaskHandle_t Task1;
-
-uint8_t count = 0;
-uint8_t connected = 0;
-
-int Messenger_Connected = 0;
-
-void Task1code( void * pvParameters) {
-  for(;;) 
-  {
-    //digitalWrite(PIN_TASK_LED, HIGH);
-    //delay(1000);
-    //digitalWrite(PIN_TASK_LED, LOW);
-
-    //SevenSegmentDisplay_ShowNumber(count);
-
-    delay(100);
-  }
-}
-*/
 
 
 uint8_t SignalInput = 0;
@@ -71,27 +41,7 @@ void setup() {
   Serial.begin(230400);
   delay(100);
 
-  //SevenSegmentDisplay_Init(PIN_LEDDISPLAY_CLOCK, PIN_LEDDISPLAY_DATA);
-
-  //int intSuccess = Messenger_Init();          // connect to wifi
-  //Messenger_SetPathAndDirection(MCHAN_SET_LEVEL_VOLUME1, "A/Volume/Setting",       2);
-  //Messenger_Start();  // start the messenger
-  //Messenger_Connected = Network_Connect("ESP32_MQTT_AP", "");
-
-  //pinMode(PIN_TASK_LED, OUTPUT);
-
-  // https://randomnerdtutorials.com/esp32-dual-core-arduino-ide/
-  /*
-  xTaskCreatePinnedToCore(
-      Task1code, // Function to implement the task 
-      "Task1",   // Name of the task 
-      20000,     // Stack size in words 
-      NULL,      // Task input parameter 
-      0,         // Priority of the task 
-      &Task1,    // Task handle
-      0);        // Core where the task should run
-  */
-
+ 
   SignalInput = 1;
 
   Radio_Init_Dual(0);
@@ -116,6 +66,9 @@ void setup() {
 
   //MySerial.begin(2000000, SERIAL_8N1, UART_RX, UART_TX);
   MySerial2.begin(1200);
+  delay(200);
+
+  MySerialBack.begin(1200);
   delay(200);
 
   AudioMode = AUDIO_MODE_SAMPLER_PLAYER;
@@ -247,6 +200,16 @@ int8_t NextRadioChannel(uint8_t RadioNumber)
 }
 
 
+struct cmessage
+{
+    uint8_t start2;
+    uint8_t command;
+    uint8_t address;
+    uint8_t param1;
+    uint8_t param2;
+};
+
+
 
 void loop() { 
 
@@ -336,54 +299,50 @@ void loop() {
     Process_Process(mBuffer, exmBuffer, 16);
 
     I2S_WriteSamplesFromBuffer32(exmBuffer, 16);
-
   }
 
-    // --- Check for serial commands
-  if (MySerial2.available()) 
+   // --- Check for serial commands
+  if ( MySerial2.available() )
   {
-    
-    uint8_t rBuf[3];
-    int8_t Returnbyte = 0;
+    int ReceivedByte = MySerial2.read();
+    Serial.println("REC");
 
-    MySerial2.readBytes(rBuf, 3);
+    //MySerialBack.write(65);
 
-    command =   rBuf[0];
-    incoming1 = rBuf[1];
-    incoming2 = rBuf[2];
+    if (ReceivedByte == 255)
+    {
+        uint8_t rBuf[5];
+        int8_t Returnbyte = 0;
 
-    Serial.println(rBuf[0]);
-    
-    if (command != 73 && command != 82 && command != 83) Process_SetParameters();
-    if (command == 73) Returnbyte = ChangeInput(incoming2 - 64);
-    if (command == 82) Returnbyte = NextRadioChannel(1);
-    if (command == 83) Returnbyte = NextRadioChannel(2);
+        uint8_t BytesReceived = MySerial2.readBytes(rBuf, 5);
 
-    MySerial2.write(uint8_t(Returnbyte + 64));
-  }
+        if (BytesReceived == 5 && rBuf[0] == 255)
+        {
+          cmessage message;
+          memcpy(&message, &rBuf, 5);
+
+          Serial.println(message.command);
+          Serial.println(message.param1);
+          Serial.println(BytesReceived);
+
+          MySerialBack.write(65);
+          
+          if (message.command != 73 && message.command != 82 && message.command != 83) Process_SetParameters(message.command, message.address, message.param1, message.param2);
+          if (message.command == 73) Returnbyte = ChangeInput(message.param1);
+          if (message.command == 82) Returnbyte = NextRadioChannel(1);
+          if (message.command == 83) Returnbyte = NextRadioChannel(2);
+
+          
+        }
+    }
+  } 
 
 
   // --- Check for serial commands
   if (Serial.available()) 
   {
     
-    uint8_t rBuf[3];
-    int8_t Returnbyte = 0;
-
-    Serial.readBytes(rBuf, 3);
-
-    command =   rBuf[0];
-    incoming1 = rBuf[1];
-    incoming2 = rBuf[2];
-
-    //Serial.println(rBuf[0]);
     
-    if (command != 73 && command != 82 && command != 83) Process_SetParameters();
-    if (command == 73) Returnbyte = ChangeInput(incoming1 - 64);
-    if (command == 82) Returnbyte = NextRadioChannel(1);
-    if (command == 83) Returnbyte = NextRadioChannel(2);
-    
-    Serial.write(uint8_t(Returnbyte + 64));
   }
 
   Input_Loop();
