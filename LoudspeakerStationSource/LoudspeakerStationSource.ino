@@ -67,11 +67,59 @@ SoftwareSerial MySerial(UART_RX, UART_TX);
 SoftwareSerial MySerialBack(3, 4, true);
 //SoftwareSerial MySerialBack(3, 4);
 
+
+// https://github.com/adafruit/Adafruit_SSD1306
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+
+
+
+
 void setup() {
  
   Serial.begin(115200);
 
   Serial.println("Hello I am your AVS Node!");
+
+  if (Config_Init() == -1) Output_SetValue(OCHAN_ERROR, ERROR_CONFIG);    // get the values of the configuration device (DIP Switch) 
+
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if(!oled.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    
+    Serial.println(F("SSD1306 allocation failed"));
+    
+  }
+  else
+  {
+
+    oled.display();
+    delay(2000); // Pause for 2 seconds
+
+    // Clear the buffer
+    oled.clearDisplay();
+
+    
+    oled.setTextSize(2); // Draw 2X-scale text
+    oled.setTextColor(SSD1306_WHITE);
+    oled.setCursor(10, 0);
+    oled.println(F("Hi Marco"));
+    oled.display();      // Show initial text
+
+
+    Serial.println(F("I2C Access"));
+
+    //oled.display();
+
+  }
+
+
 
   //MySerial.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
   MySerial.begin(600);
@@ -89,7 +137,7 @@ void setup() {
 
   Output_Init();  // prepare the 7 segment display
 
-  if (Config_Init() == -1) Output_SetValue(OCHAN_ERROR, ERROR_CONFIG);    // get the values of the configuration device (DIP Switch) 
+  //if (Config_Init() == -1) Output_SetValue(OCHAN_ERROR, ERROR_CONFIG);    // get the values of the configuration device (DIP Switch) 
 
   Output_SetValue(OCHAN_DEVICENUMBER, Config_GetValue(CCHAN_DEVICENUMBER));        // let the output interface know about the device number of the station
    
