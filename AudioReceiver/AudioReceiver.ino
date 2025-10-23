@@ -27,6 +27,7 @@ int32_t exmBuffer[32];
 #include <SoftwareSerial.h>
 
 SoftwareSerial MySerial2(UART_RX_2, UART_TX_2, true);
+//SoftwareSerial MySerial2(UART_RX_2, UART_TX_2);
 SoftwareSerial MySerialBack(17, 18);
 
 uint8_t radiosuccess2;
@@ -65,10 +66,10 @@ void setup() {
 
 
   //MySerial.begin(2000000, SERIAL_8N1, UART_RX, UART_TX);
-  MySerial2.begin(1200);
+  MySerial2.begin(600);
   delay(200);
 
-  MySerialBack.begin(1200);
+  MySerialBack.begin(600);
   delay(200);
 
   AudioMode = AUDIO_MODE_SAMPLER_PLAYER;
@@ -121,6 +122,8 @@ uint8_t ActiveModuleHasChanged2 = 0;
 uint16_t TimeOut = 300;
 
 uint8_t PacketNotReceivedCount = 0;
+
+uint8_t SumByte = 0;
 
 
 int8_t ChangeInput(uint8_t NewInput)
@@ -325,13 +328,18 @@ void loop() {
           Serial.println(message.param1);
           Serial.println(BytesReceived);
 
-          MySerialBack.write(65);
-          
-          if (message.command != 73 && message.command != 82 && message.command != 83) Process_SetParameters(message.command, message.address, message.param1, message.param2);
-          if (message.command == 73) Returnbyte = ChangeInput(message.param1);
-          if (message.command == 82) Returnbyte = NextRadioChannel(1);
-          if (message.command == 83) Returnbyte = NextRadioChannel(2);
+          uint16_t SendSum = rBuf[1] + rBuf[2] + rBuf[3];
+          uint8_t SumByte = SendSum & 255;
 
+          if (SumByte == rBuf[4])
+          {
+            MySerialBack.write( 65 );
+            
+            if (message.command != 73 && message.command != 82 && message.command != 83) Process_SetParameters(message.command, message.address, message.param1, message.param2);
+            if (message.command == 73) Returnbyte = ChangeInput(message.param1);
+            if (message.command == 82) Returnbyte = NextRadioChannel(1);
+            if (message.command == 83) Returnbyte = NextRadioChannel(2);
+          }
           
         }
     }

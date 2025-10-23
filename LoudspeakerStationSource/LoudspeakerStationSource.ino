@@ -65,7 +65,7 @@ HardwareSerial MySerial(1); // define a Serial for UART1
 #include <SoftwareSerial.h>
 SoftwareSerial MySerial(UART_RX, UART_TX);
 SoftwareSerial MySerialBack(3, 4, true);
-
+//SoftwareSerial MySerialBack(3, 4);
 
 void setup() {
  
@@ -74,10 +74,10 @@ void setup() {
   Serial.println("Hello I am your AVS Node!");
 
   //MySerial.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
-  MySerial.begin(1200);
+  MySerial.begin(600);
   delay(200);
 
-  MySerialBack.begin(1200);
+  MySerialBack.begin(600);
   delay(200);
 
   // initialization of the operation variables
@@ -171,6 +171,7 @@ struct cmessage
 
 
 uint8_t ShouldSend = 0;
+
 uint8_t sbuf[6];
 
 void SendAudioRadioParameter(uint8_t Command, uint8_t ParameterValue)
@@ -183,9 +184,11 @@ void SendAudioRadioParameter(uint8_t Command, uint8_t ParameterValue)
   sbuf[2] = Command;
   sbuf[3] = 3;
   sbuf[4] = ParameterValue;
-  sbuf[5] = 0;
 
   //memcpy(&sbuf, &message, 5);
+
+  uint16_t SendSum = sbuf[2] + sbuf[3] + sbuf[4];
+  sbuf[5] = SendSum & 255;
 
   ShouldSend = 1;
 
@@ -207,19 +210,21 @@ void Regulate(uint8_t audiochannelnumber)
   uint16_t VolumeSend = PValue[ PCHAN_SET_LEVEL_VOLUME1 ] / 10;
 
 
-
   sbuf[0] = 255;
   sbuf[1] = 255;
   sbuf[2] = 86;
   sbuf[3] = 3;
   sbuf[4] = (uint8_t)VolumeSend;
-  sbuf[5] = 0;
-
+  
   //memcpy(&sbuf, &message, 5);
 
   //MySerial.write(sbuf, 6);
 
+  uint16_t SendSum = sbuf[2] + sbuf[3] + sbuf[4];
+  sbuf[5] = SendSum & 255;
+
   ShouldSend = 1;
+
 
   Serial.println(sbuf[2]);
   Serial.println(sbuf[4]);
@@ -342,7 +347,7 @@ void loop() {
 
   if (ShouldSend == 1)
   {
-    if ( (millis() - lastSend) > 300)
+    if ( (millis() - lastSend) > 1000)
     {
       MySerial.write(sbuf, 6);
       lastSend = millis();
