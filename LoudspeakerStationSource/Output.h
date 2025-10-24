@@ -45,7 +45,7 @@ int NumberToBeShown = 0;
 
 void Output_Init()
 {
-  SevenSegmentDisplay_Init(PIN_LEDBAR_CLOCK, PIN_LEDBAR_DATA);
+  //SevenSegmentDisplay_Init(PIN_LEDBAR_CLOCK, PIN_LEDBAR_DATA);
 };
 
 
@@ -62,6 +62,17 @@ int Output_GetValue(int Channel)
 }
 
 
+void Display_ShowNumber(uint16_t Number)
+{
+  oled.clearDisplay();
+  oled.setTextSize(4); // 
+  oled.setTextColor(SSD1306_WHITE);
+  oled.setCursor(10, 0);
+  oled.println(String(Number));
+  oled.display();      // Show initial text
+}
+
+
 
 void Output_ShowEvent(int intEvent, int EventTimeOut)
 {
@@ -69,11 +80,11 @@ void Output_ShowEvent(int intEvent, int EventTimeOut)
   Output_Event = intEvent;
   Output_EventTimeOut = EventTimeOut;
   
-  if (intEvent == EVENT_MESSAGE_RECEIVED) SevenSegmentDisplay_ShowNumber(8888); 
-  if (intEvent == EVENT_SHOW_AUDIO_PARAM)  SevenSegmentDisplay_ShowNumber(Output_Value[OCHAN_AUDIO_PARAM]); 
-  if (intEvent == EVENT_SHOW_RADIO1)  SevenSegmentDisplay_ShowNumber(2 * Output_Value[ OCHAN_RADIO1_INDEX ] + 1); 
-  if (intEvent == EVENT_SHOW_RADIO2)  SevenSegmentDisplay_ShowNumber(2 * Output_Value[ OCHAN_RADIO1_INDEX ] ); 
-  if (intEvent == EVENT_SHOW_INPUT)  SevenSegmentDisplay_ShowNumber(1111 * Output_Value[OCHAN_INPUT]); 
+  if (intEvent == EVENT_MESSAGE_RECEIVED) Display_ShowNumber(8888); 
+  if (intEvent == EVENT_SHOW_AUDIO_PARAM)  Display_ShowNumber(Output_Value[OCHAN_AUDIO_PARAM]); 
+  if (intEvent == EVENT_SHOW_RADIO1)  Display_ShowNumber(2 * Output_Value[ OCHAN_RADIO1_INDEX ] + 1); 
+  if (intEvent == EVENT_SHOW_RADIO2)  Display_ShowNumber(2 * Output_Value[ OCHAN_RADIO1_INDEX ] ); 
+  if (intEvent == EVENT_SHOW_INPUT)  Display_ShowNumber(1111 * Output_Value[OCHAN_INPUT]); 
  
 }
 
@@ -87,7 +98,7 @@ void Output_EventLoop()
     if ((millis() - Output_EventTime) > Output_EventTimeOut)
     {
         Output_Event = 0;
-        SevenSegmentDisplay_ShowNumber(NumberToBeShown); 
+        Display_ShowNumber(NumberToBeShown); 
     }
   }
 }
@@ -101,7 +112,7 @@ void Output_Refresh(uint8_t RefreshType)
     if ((millis() - Output_EventTime) > 700)
     {
         Output_Event = 0;
-        SevenSegmentDisplay_ShowNumber(NumberToBeShown); 
+        Display_ShowNumber(NumberToBeShown); 
     }
   }
   else
@@ -111,19 +122,19 @@ void Output_Refresh(uint8_t RefreshType)
       if (Output_Value[OCHAN_WIFISTATUS] == WIFI_CONNECTED)    // Connected
       {
         NumberToBeShown = Output_Value[OCHAN_DEVICENUMBER] * 1000 + Output_Value[OCHAN_LEVEL_VOLUME1];
-        SevenSegmentDisplay_ShowNumber(NumberToBeShown); 
+        Display_ShowNumber(NumberToBeShown); 
       }
       else                 // not connected
       {
         NumberToBeShown = Output_Value[OCHAN_LEVEL_VOLUME1];
-        SevenSegmentDisplay_ShowNumber(NumberToBeShown); 
+        Display_ShowNumber(NumberToBeShown); 
       }
       
     }
     else
     {
       NumberToBeShown = 9900 + Output_Value[OCHAN_ERROR];
-      SevenSegmentDisplay_ShowNumber(NumberToBeShown); 
+      Display_ShowNumber(NumberToBeShown); 
     }
        
   }

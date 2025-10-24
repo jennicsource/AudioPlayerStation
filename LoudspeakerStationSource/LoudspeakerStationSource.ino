@@ -31,7 +31,7 @@
 #include "Input.h"
 
 
-#include "Output.h"
+
 
 
 void MessageReceivedValue(int Message, int Value);
@@ -55,17 +55,12 @@ void MessageReceivedValue(int Message, int Value);
 
 int PValue[16];
 
-#include "SerialCED.h"
 
-/*
-#include <HardwareSerial.h>
-HardwareSerial MySerial(1); // define a Serial for UART1
-*/
 
 #include <SoftwareSerial.h>
 SoftwareSerial MySerial(UART_RX, UART_TX);
-SoftwareSerial MySerialBack(3, 4, true);
-//SoftwareSerial MySerialBack(3, 4);
+SoftwareSerial MySerialBack(3, 4);
+
 
 
 // https://github.com/adafruit/Adafruit_SSD1306
@@ -79,8 +74,10 @@ SoftwareSerial MySerialBack(3, 4, true);
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
+#include "Output.h"
 
 
+#include "SerialCED.h"
 
 void setup() {
  
@@ -89,6 +86,7 @@ void setup() {
   Serial.println("Hello I am your AVS Node!");
 
   if (Config_Init() == -1) Output_SetValue(OCHAN_ERROR, ERROR_CONFIG);    // get the values of the configuration device (DIP Switch) 
+
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!oled.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -109,7 +107,7 @@ void setup() {
     oled.setTextSize(2); // Draw 2X-scale text
     oled.setTextColor(SSD1306_WHITE);
     oled.setCursor(10, 0);
-    oled.println(F("Hi Marco"));
+    oled.println(F("Helloo"));
     oled.display();      // Show initial text
 
 
@@ -122,10 +120,10 @@ void setup() {
 
 
   //MySerial.begin(9600, SERIAL_8N1, UART_RX, UART_TX);
-  MySerial.begin(600);
+  MySerial.begin(9600);
   delay(200);
 
-  MySerialBack.begin(600);
+  MySerialBack.begin(9600);
   delay(200);
 
   // initialization of the operation variables

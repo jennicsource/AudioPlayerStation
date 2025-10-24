@@ -26,7 +26,7 @@ int32_t exmBuffer[32];
 // https://github.com/plerup/espsoftwareserial/
 #include <SoftwareSerial.h>
 
-SoftwareSerial MySerial2(UART_RX_2, UART_TX_2, true);
+SoftwareSerial MySerial2(UART_RX_2, UART_TX_2);
 //SoftwareSerial MySerial2(UART_RX_2, UART_TX_2);
 SoftwareSerial MySerialBack(17, 18);
 
@@ -66,10 +66,10 @@ void setup() {
 
 
   //MySerial.begin(2000000, SERIAL_8N1, UART_RX, UART_TX);
-  MySerial2.begin(600);
+  MySerial2.begin(9600);
   delay(200);
 
-  MySerialBack.begin(600);
+  MySerialBack.begin(9600);
   delay(200);
 
   AudioMode = AUDIO_MODE_SAMPLER_PLAYER;
@@ -333,12 +333,15 @@ void loop() {
 
           if (SumByte == rBuf[4])
           {
-            MySerialBack.write( 65 );
+            
             
             if (message.command != 73 && message.command != 82 && message.command != 83) Process_SetParameters(message.command, message.address, message.param1, message.param2);
             if (message.command == 73) Returnbyte = ChangeInput(message.param1);
             if (message.command == 82) Returnbyte = NextRadioChannel(1);
             if (message.command == 83) Returnbyte = NextRadioChannel(2);
+
+            MySerialBack.write(65);
+
           }
           
         }

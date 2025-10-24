@@ -28,7 +28,7 @@ D2 GPIO3/TEMP/A2
 D3   CS             D10   g2 MOSI
 D4  I2C             D9    g  MISO
 D5  I2C             D8    w  SCK/RELAY
-D6   TX             D7   GPIO44/RX/IR
+D6   TX  GPIO 43    D7   GPIO44/RX/IR
 
 */
 
