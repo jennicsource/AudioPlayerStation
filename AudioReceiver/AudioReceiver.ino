@@ -43,7 +43,7 @@ void setup() {
   delay(100);
 
  
-  SignalInput = 1;
+  SignalInput = 2;
 
   Radio_Init_Dual(0);
   delay(100);
@@ -97,7 +97,7 @@ void setup() {
   }
 
 
-  Volume = 50;
+  Volume = 20;
   
 }
 

@@ -65,9 +65,9 @@ int Output_GetValue(int Channel)
 void Display_ShowNumber(uint16_t Number)
 {
   oled.clearDisplay();
-  oled.setTextSize(4); // 
+  oled.setTextSize(3); // 
   oled.setTextColor(SSD1306_WHITE);
-  oled.setCursor(10, 0);
+  oled.setCursor(45, 5);
   oled.println(String(Number));
   oled.display();      // Show initial text
 }

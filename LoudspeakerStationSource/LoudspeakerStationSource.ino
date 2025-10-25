@@ -106,8 +106,8 @@ void setup() {
     
     oled.setTextSize(2); // Draw 2X-scale text
     oled.setTextColor(SSD1306_WHITE);
-    oled.setCursor(10, 0);
-    oled.println(F("Helloo"));
+    oled.setCursor(30, 0);
+    oled.println(F("Start"));
     oled.display();      // Show initial text
 
 
@@ -127,7 +127,7 @@ void setup() {
   delay(200);
 
   // initialization of the operation variables
-  PValue[PCHAN_LEVEL_VOLUME1] = 5;
+  PValue[PCHAN_LEVEL_VOLUME1] = 20;
 
   PValue[ PCHAN_SET_RADIO1 ] = 0;
   PValue[ PCHAN_SET_RADIO2 ] = 0;
@@ -180,14 +180,14 @@ void setup() {
 
     Messenger_Start();  // start the messenger
 
-    Messenger_SetValue(MCHAN_LEVEL_VOLUME1, PValue[PCHAN_LEVEL_VOLUME1] / 10);  // 
-    Messenger_SetValue(MCHAN_LEVEL_VOLUME2, PValue[PCHAN_LEVEL_VOLUME2] / 10);
+    Messenger_SetValue(MCHAN_LEVEL_VOLUME1, PValue[PCHAN_LEVEL_VOLUME1] );  // 
+    Messenger_SetValue(MCHAN_LEVEL_VOLUME2, PValue[PCHAN_LEVEL_VOLUME2] );
 
     if (Config_GetValue(CCHAN_DONOTSEND_WIFI) == 0) Messenger_SendValues();  // send the messages
   }
 
-  Output_SetValue(OCHAN_LEVEL_VOLUME1, PValue[PCHAN_LEVEL_VOLUME1] / 10);    // let the output interface know about motor pot level
-  Output_SetValue(OCHAN_LEVEL_VOLUME2, PValue[PCHAN_LEVEL_VOLUME2] / 10); 
+  Output_SetValue(OCHAN_LEVEL_VOLUME1, PValue[PCHAN_LEVEL_VOLUME1] );    // let the output interface know about motor pot level
+  Output_SetValue(OCHAN_LEVEL_VOLUME2, PValue[PCHAN_LEVEL_VOLUME2] ); 
   
   Output_Refresh(REFRESHTYPE_FULL);  // and show the values
 
@@ -220,16 +220,18 @@ uint8_t ShouldSend = 0;
 
 uint8_t sbuf[6];
 
-void SendAudioRadioParameter(uint8_t Command, uint8_t ParameterValue)
+void SendAudioRadioParameter(uint8_t Command, uint16_t ParameterValue)
 {
   
   //cmessage message;
+
+  if (ParameterValue > 255) ParameterValue = 255;
 
   sbuf[0] = 255;
   sbuf[1] = 255;
   sbuf[2] = Command;
   sbuf[3] = 3;
-  sbuf[4] = ParameterValue;
+  sbuf[4] = (uint8_t)ParameterValue;
 
   //memcpy(&sbuf, &message, 5);
 
@@ -253,8 +255,8 @@ void Regulate(uint8_t audiochannelnumber)
   // TODO: DUAL!!!!
   
   
-  uint16_t VolumeSend = PValue[ PCHAN_SET_LEVEL_VOLUME1 ] / 10;
-
+  uint16_t VolumeSend = PValue[ PCHAN_SET_LEVEL_VOLUME1 ] ;
+  if (VolumeSend > 255) VolumeSend = 255;
 
   sbuf[0] = 255;
   sbuf[1] = 255;
@@ -275,9 +277,9 @@ void Regulate(uint8_t audiochannelnumber)
   Serial.println(sbuf[2]);
   Serial.println(sbuf[4]);
 
-  PValue[ PCHAN_LEVEL_VOLUME1 ] = PValue[ PCHAN_SET_LEVEL_VOLUME1 ];
+  PValue[ PCHAN_LEVEL_VOLUME1 ] = VolumeSend;
 
-  Output_ShowValue(OCHAN_LEVEL_VOLUME1, PValue[ PCHAN_LEVEL_VOLUME1 ] / 10);
+  Output_ShowValue(OCHAN_LEVEL_VOLUME1, PValue[ PCHAN_LEVEL_VOLUME1 ] );
   Output_ShowEvent(EVENT_MESSAGE_RECEIVED, 700); 
 }
 
@@ -301,11 +303,11 @@ void loop() {
 
     if (Config_GetValue(CCHAN_DONOTCONNECT_WIFI) == 0)     // if we wanted wifi connection
     {
-      Messenger_SetValue(MCHAN_LEVEL_VOLUME1,  PValue[PCHAN_LEVEL_VOLUME1] / 10);   // send out the value of the motor pot
+      Messenger_SetValue(MCHAN_LEVEL_VOLUME1,  PValue[PCHAN_LEVEL_VOLUME1] );   // send out the value of the motor pot
     
       if (Config_GetValue(CCHAN_DOUBLESTATION) == 1)
       {         
-        Messenger_SetValue(MCHAN_LEVEL_VOLUME2,  PValue[PCHAN_LEVEL_VOLUME2] / 10);    // send out the value of the second motor pot 
+        Messenger_SetValue(MCHAN_LEVEL_VOLUME2,  PValue[PCHAN_LEVEL_VOLUME2] );    // send out the value of the second motor pot 
       }  
         
       if (Config_GetValue(CCHAN_DONOTSEND_WIFI) == 0) Messenger_SendValues(); // send the messages
@@ -320,14 +322,12 @@ void loop() {
         switch (MChannelValueWasReceived) {   
     
           case MCHAN_SET_LEVEL_VOLUME1:
-            PValue[PCHAN_SET_LEVEL_VOLUME1] = Messenger_GetValue(MChannelValueWasReceived) * 10;  // message to control the motor pot 1
-            Limit(PCHAN_SET_LEVEL_VOLUME1, 0, 1400);
+            PValue[PCHAN_SET_LEVEL_VOLUME1] = Messenger_GetValue(MChannelValueWasReceived);  // message to control the motor pot 1
             Regulate(0);
             break;
 
           case MCHAN_SET_LEVEL_VOLUME2:
-            PValue[PCHAN_SET_LEVEL_VOLUME2] = Messenger_GetValue(MChannelValueWasReceived) * 10;  // message to control the motor pot 2
-            Limit(PCHAN_SET_LEVEL_VOLUME2, 0, 1400);
+            PValue[PCHAN_SET_LEVEL_VOLUME2] = Messenger_GetValue(MChannelValueWasReceived);  // message to control the motor pot 2
             if (Config_GetValue(CCHAN_DOUBLESTATION) == 1) Regulate(1);  // regulator loop for the second motor pot (if there is one)
             break;
 
@@ -347,14 +347,14 @@ void loop() {
 
           case MCHAN_SET_PARAMEQ1_FREQUENCY:
             PValue[PCHAN_SET_PARAMEQ1_FREQUENCY] = Messenger_GetValue(MChannelValueWasReceived);  // message 
-            SendAudioRadioParameter(80, PValue[ PCHAN_SET_PARAMEQ1_FREQUENCY ] );
+            SendAudioRadioParameter(80, PValue[ PCHAN_SET_PARAMEQ1_FREQUENCY ] / 40 );
             Output_SetValue(OCHAN_AUDIO_PARAM, PValue[ PCHAN_SET_PARAMEQ1_FREQUENCY ] );
             Output_ShowEvent(EVENT_SHOW_AUDIO_PARAM, 4000);
             break;
 
           case MCHAN_SET_PARAMEQ2_FREQUENCY:
             PValue[PCHAN_SET_PARAMEQ2_FREQUENCY] = Messenger_GetValue(MChannelValueWasReceived);  // message 
-            SendAudioRadioParameter(81, PValue[ PCHAN_SET_PARAMEQ2_FREQUENCY ] );
+            SendAudioRadioParameter(81, PValue[ PCHAN_SET_PARAMEQ2_FREQUENCY ] / 40 );
             Output_SetValue(OCHAN_AUDIO_PARAM, PValue[ PCHAN_SET_PARAMEQ2_FREQUENCY ] );
             Output_ShowEvent(EVENT_SHOW_AUDIO_PARAM, 4000);
             break;
