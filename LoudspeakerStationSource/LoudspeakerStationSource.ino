@@ -77,6 +77,8 @@ Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #include "Output.h"
 
 
+
+
 #include "SerialCED.h"
 
 void setup() {
@@ -273,7 +275,6 @@ void Regulate(uint8_t audiochannelnumber)
 
   ShouldSend = 1;
 
-
   Serial.println(sbuf[2]);
   Serial.println(sbuf[4]);
 
@@ -424,20 +425,16 @@ void loop() {
   if (Serial.available()) 
   {
     
-    /*
-    uint8_t rBuf[3];
+    
+    uint8_t  Consolebyte = Serial.read();
 
-    sbuf[0] = Command;
-    sbuf[1] = 64 + (ParameterValue / 16) ;
-    sbuf[2] = 64 + (ParameterValue & 0x0F);
+    if (Consolebyte == 86) 
+    {
+      PValue[PCHAN_SET_LEVEL_VOLUME1] = 30;  // 
+      Regulate(0);
+    }
 
-
-    Serial.readBytes(rBuf, 3);
-
-    MySerial.write(rBuf, 3);
-
-    SerialReplyExpected = 1;
-    */
+    
   }
 
 

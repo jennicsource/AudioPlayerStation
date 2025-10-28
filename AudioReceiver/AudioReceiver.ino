@@ -21,6 +21,9 @@ int16_t mBuffer2[PACKET_LENGTH_SAMPLES];
 
 int32_t exmBuffer[32];
 
+uint8_t rpBuffer[128];  
+uint8_t disBuffer[128];   
+
 
 
 // https://github.com/plerup/espsoftwareserial/
@@ -28,12 +31,14 @@ int32_t exmBuffer[32];
 
 SoftwareSerial MySerial2(UART_RX_2, UART_TX_2);
 //SoftwareSerial MySerial2(UART_RX_2, UART_TX_2);
-SoftwareSerial MySerialBack(17, 18);
+SoftwareSerial MySerialBack(4, 5);
+
+#include <HardwareSerial.h>
+
+HardwareSerial MySerial(1); // define a Serial for UART1
+
 
 uint8_t radiosuccess2;
-
-
-
 
 uint8_t SignalInput = 0;
 
@@ -42,8 +47,7 @@ void setup() {
   Serial.begin(230400);
   delay(100);
 
- 
-  SignalInput = 2;
+  SignalInput = 3;
 
   Radio_Init_Dual(0);
   delay(100);
@@ -72,7 +76,12 @@ void setup() {
   MySerialBack.begin(9600);
   delay(200);
 
+  MySerial.begin(2000000, SERIAL_8N1, UART_RX, UART_TX);
+  delay(1000);
+
+
   AudioMode = AUDIO_MODE_SAMPLER_PLAYER;
+  //AudioMode = AUDIO_MODE_PLAYER;
   samplebuffer_count = 4;
   samplebuffer_length = 16;
   samplerate = 32000;
@@ -81,6 +90,7 @@ void setup() {
   volumecontrol = 1; 
   I2S_Start();
   delay(100);
+
 
   Input_Init();
   Output_Init();
@@ -214,6 +224,16 @@ struct cmessage
 
 
 
+int32_t shift = 0;
+int32_t cursor0 = 0;
+int32_t cursor1 = 0;
+int32_t cursor2 = 0;
+int32_t cursor3 = 0;
+
+uint8_t packetinvalid = 0;
+uint8_t synced = 0; 
+
+
 void loop() { 
 
   if (SignalInput == 1)
@@ -304,6 +324,66 @@ void loop() {
     I2S_WriteSamplesFromBuffer32(exmBuffer, 16);
   }
 
+
+
+  if (SignalInput == 3)
+  {
+    MySerial.readBytes(rpBuffer, 36);
+
+    //Serial.println("GOT IT");
+
+    if ( ( rpBuffer[0] != 255 ) || ( rpBuffer[1] != 255 ) || ( rpBuffer[2] != 255 ) || ( rpBuffer[3] != 255 ) )
+    {
+      synced = 0; 
+    }
+    
+    if (synced == 0)
+    {
+      for (uint8_t i = 0; i < 36; i++)
+      {
+        cursor0 = i;
+        cursor1 = i + 1;
+        if (cursor1 > 35) cursor1 = cursor1 - 36; 
+        cursor2 = i + 2;
+        if (cursor2 > 35) cursor2 = cursor2 - 36; 
+        cursor3 = i + 3;
+        if (cursor3 > 35) cursor3 = cursor3 - 36; 
+        
+        if ( ( rpBuffer[cursor0] == 255 ) && ( rpBuffer[cursor1] == 255 ) && ( rpBuffer[cursor2] == 255 ) && ( rpBuffer[cursor3] == 255 ) )
+        {
+            //shift = i;
+
+            if (i > 0) MySerial.readBytes(disBuffer, i); 
+            packetinvalid = 1;
+            shift = 0;
+            synced = 1;
+            //break;
+        };
+      }
+    }
+
+    if (packetinvalid == 0)
+    {
+      for (uint8_t i = 0; i < 32; i++)
+      {      
+        bBuffer[i] = rpBuffer[i + 4];
+      }  
+
+      memcpy(&mBuffer, &bBuffer, 32);
+
+      Process_Process(mBuffer, exmBuffer, 16);
+
+      I2S_WriteSamplesFromBuffer32(exmBuffer, 16);
+
+    }
+    else
+    {
+      packetinvalid = 0;
+    }
+
+  }
+
+
    // --- Check for serial commands
   if ( MySerial2.available() )
   {
@@ -349,10 +429,10 @@ void loop() {
   } 
 
 
+
   // --- Check for serial commands
   if (Serial.available()) 
   {
-    
     
   }
 

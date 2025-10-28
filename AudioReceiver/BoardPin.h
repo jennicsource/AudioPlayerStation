@@ -59,6 +59,9 @@ MISO IR         orange
 
 //#define PIN_LED_DIRTY  19 
 
+#define UART_RX       18
+#define UART_TX       17
+
 #define UART_RX_2      6  // TX and RX swapped
 #define UART_TX_2      7  // TX and RX swapped
   
