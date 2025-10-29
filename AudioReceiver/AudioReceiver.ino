@@ -82,12 +82,31 @@ void setup() {
 
   AudioMode = AUDIO_MODE_SAMPLER_PLAYER;
   //AudioMode = AUDIO_MODE_PLAYER;
-  samplebuffer_count = 4;
-  samplebuffer_length = 16;
-  samplerate = 32000;
+  
+
+  if (SignalInput == 1)
+  {
+    samplebuffer_count = 4;
+    samplebuffer_length = 16;
+    samplerate = 32000;
+  }
+  if (SignalInput == 2)
+  {
+    samplebuffer_count = 2;
+    samplebuffer_length = 8;
+    samplerate = 32000;
+  }
+  if (SignalInput == 3)
+  {
+    samplebuffer_count = 8;
+    samplebuffer_length = 16;
+    samplerate = 32000;
+  }
+  
+  volumecontrol = 1; 
   audiochannelcount = 2;
   expandchannels = 0;
-  volumecontrol = 1; 
+   
   I2S_Start();
   delay(100);
 
@@ -164,7 +183,24 @@ int8_t ChangeInput(uint8_t NewInput)
     AudioMode = AUDIO_MODE_SAMPLER_PLAYER;
     samplebuffer_count = 2;
     samplebuffer_length = 8;
-    samplerate = 32000;        // Standard CD audio sample rate
+    samplerate = 32000;        // 
+    audiochannelcount = 2;     // Stereo
+    expandchannels = 0;
+    volumecontrol = 1; 
+    I2S_Restart();
+
+    RB = (int8_t)NewInput;
+  }
+
+  if (NewInput == 3)
+  {
+    SignalInput = NewInput;
+
+      // --- I2S (Audio Output) Setup ---
+    AudioMode = AUDIO_MODE_SAMPLER_PLAYER;
+    samplebuffer_count = 2;
+    samplebuffer_length = 8;
+    samplerate = 32000;        // sample rate
     audiochannelcount = 2;     // Stereo
     expandchannels = 0;
     volumecontrol = 1; 
@@ -330,11 +366,14 @@ void loop() {
   {
     MySerial.readBytes(rpBuffer, 36);
 
-    //Serial.println("GOT IT");
+    //TimeReceived = micros(); // current time in microseconds
+    //Serial.println(TimeReceived - LastTimeReceived1);
+    //LastTimeReceived1 = TimeReceived;
 
     if ( ( rpBuffer[0] != 255 ) || ( rpBuffer[1] != 255 ) || ( rpBuffer[2] != 255 ) || ( rpBuffer[3] != 255 ) )
     {
       synced = 0; 
+      Serial.println("Syncing");
     }
     
     if (synced == 0)
@@ -373,8 +412,15 @@ void loop() {
 
       Process_Process(mBuffer, exmBuffer, 16);
 
-      I2S_WriteSamplesFromBuffer32(exmBuffer, 16);
+      // Serial.println( micros() - TimeReceived );
 
+      I2S_WriteSamplesFromBuffer32(exmBuffer, 16);
+      //I2S_WriteSamplesFromBuffer(mBuffer, 16);
+
+      TimeReceived = micros(); // current time in microseconds
+      Serial.println(TimeReceived - LastTimeReceived1);
+      LastTimeReceived1 = TimeReceived;
+      
     }
     else
     {
