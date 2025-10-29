@@ -98,7 +98,7 @@ void setup() {
   }
   if (SignalInput == 3)
   {
-    samplebuffer_count = 8;
+    samplebuffer_count = 4;
     samplebuffer_length = 16;
     samplerate = 32000;
   }
@@ -417,9 +417,9 @@ void loop() {
       I2S_WriteSamplesFromBuffer32(exmBuffer, 16);
       //I2S_WriteSamplesFromBuffer(mBuffer, 16);
 
-      TimeReceived = micros(); // current time in microseconds
-      Serial.println(TimeReceived - LastTimeReceived1);
-      LastTimeReceived1 = TimeReceived;
+      //TimeReceived = micros(); // current time in microseconds
+      //Serial.println(TimeReceived - LastTimeReceived1);
+      //LastTimeReceived1 = TimeReceived;
       
     }
     else
