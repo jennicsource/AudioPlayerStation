@@ -31,18 +31,9 @@
 #define REFRESHTYPE_FULL             2
 
 
-#include "SevenSegmentDisplay.h"
+//#include "SevenSegmentDisplay.h"
 
-// https://github.com/adafruit/Adafruit_SSD1306
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
-
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
+// https://docs.freenove.com/projects/fnk0079/en/latest/fnk0079/codes/ESP32/ESP32_C/1_LCD1602.html
 
 long Output_EventTime = 0;
 int Output_Event = 0;
@@ -52,40 +43,84 @@ int Output_Value[12];
 
 int NumberToBeShown = 0;
 
+//#include <LiquidCrystal_I2C.h>
+
+#include <hd44780.h>                       // main hd44780 header
+#include <hd44780ioClass/hd44780_I2Clcd.h> // i2c expander i/o class header
+hd44780_I2Clcd lcd(0x27); // declare lcd object: auto locate & auto config expander chip
+
+//LiquidCrystal_I2C lcd(0x27,16,2);  // 0x3F
 
 void Output_Init()
 {
   //SevenSegmentDisplay_Init(PIN_LEDBAR_CLOCK, PIN_LEDBAR_DATA);
 
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!oled.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    
-    Serial.println(F("SSD1306 allocation failed"));
-    
-  }
-  else
-  {
+/*
+  lcd.init();                     // LCD driver initialization
+  lcd.backlight();                // Open the backlight
+  lcd.setCursor(1,1);             // Move the cursor to row 0, column 0
+  lcd.print("hello!");     // The print content is displayed on the LCD
+*/
 
-    oled.display();
-    delay(2000); // Pause for 2 seconds
+  int status = lcd.begin(16, 2);
+  Serial.println(status);
+	if(status) // non zero status means it was unsuccesful
+	{
+		// hd44780 has a fatalError() routine that blinks an led if possible
+		// begin() failed so blink error code using the onboard LED if possible
+		hd44780::fatalError(status); // does not return
+	}
 
-    // Clear the buffer
-    oled.clearDisplay();
+	// initalization was successful, the backlight should be on now
+  lcd.setBacklight(255);
+  //lcd.display();
+  lcd.clear();
+	// Print a message to the LCD
+	lcd.print("Hello, World!");
+  lcd.display();
 
-    
-    oled.setTextSize(2); // Draw 2X-scale text
-    oled.setTextColor(SSD1306_WHITE);
-    oled.setCursor(30, 0);
-    oled.println(F("Starting"));
-    oled.display();      // Show initial text
-
-
-    Serial.println(F("I2C Access"));
-
-    //oled.display();
-
-  }
+  Serial.println("Display done");
 };
+
+
+
+
+void Scan_I2C()
+{
+
+  byte error, address;
+  int nDevices;
+  Serial.println("Scanning...");
+  nDevices = 0;
+  for(address = 1; address < 127; address++ ) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+    if (error == 0) {
+      Serial.print("I2C device found at address 0x");
+      if (address<16) {
+        Serial.print("0");
+      }
+      Serial.println(address,HEX);
+      nDevices++;
+    }
+    else if (error==4) {
+      Serial.print("Unknow error at address 0x");
+      if (address<16) {
+        Serial.print("0");
+      }
+      Serial.println(address,HEX);
+    }    
+  }
+  if (nDevices == 0) {
+    Serial.println("No I2C devices found\n");
+  }
+  else {
+    Serial.println("done\n");
+  }
+
+
+}
+
 
 
 
@@ -103,12 +138,7 @@ int Output_GetValue(int Channel)
 
 void Display_ShowNumber(uint16_t Number)
 {
-  oled.clearDisplay();
-  oled.setTextSize(3); // 
-  oled.setTextColor(SSD1306_WHITE);
-  oled.setCursor(45, 5);
-  oled.println(String(Number));
-  oled.display();      // Show initial text
+  
 }
 
 

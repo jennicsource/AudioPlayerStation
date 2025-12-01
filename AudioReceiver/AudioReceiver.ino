@@ -98,8 +98,8 @@ void setup() {
   }
   if (SignalInput == 3)
   {
-    samplebuffer_count = 4;
-    samplebuffer_length = 16;
+    samplebuffer_count = 8;
+    samplebuffer_length = 8;
     samplerate = 32000;
   }
   
