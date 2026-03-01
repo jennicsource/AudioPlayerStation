@@ -133,7 +133,7 @@ void setup()
   I2S_Start();
   delay(200);
 
-  I2S_Clock_Init(11, CurrentCorrection);   // start the clock with the current correction
+  I2S_Clock_Init(SAMPLERATE_INDEX_32KHZ_32BIT, CurrentCorrection);   // start the clock with the current correction
 
   Sync_Init(8);    // Initialize Live-Tuning with a GateTimeFactor of 8 = 1250000 packets
   
