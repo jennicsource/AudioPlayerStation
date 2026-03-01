@@ -10,17 +10,19 @@ MISO IR          orange
 
 /*
 
+// this is for ESP32-S3 Audio Transceiver Board
+
 #define pCE        9      // green
 #define pCS        10     // violet
 #define pSCK       12     // blue
 #define pMOSI      11     // yellow   
 #define pMISO      13     // orange
 
-#define pCE2        0    // weiß  green
-#define pCS2        0    // grau  white
-#define pSCK2       12    // lila  blue
-#define pMOSI2      11    // blau  yellow 
-#define pMISO2      13    // grün  brown 
+#define pCE2        0    // 
+#define pCS2        0    // 
+#define pSCK2       12    // 
+#define pMOSI2      11    // 
+#define pMISO2      13    // 
 
 */
 
@@ -30,6 +32,8 @@ MISO IR          orange
 // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/
 // https://wiki.seeedstudio.com/Grove-Shield-for-Seeeduino-XIAO-embedded-battery-management-chip/
 
+
+// this is for the ESP32-S3 as XIAO board
 
 #define pCE        3     // 
 #define pCS        4     // 
@@ -53,11 +57,12 @@ MISO IR          orange
 
 #define PIN_SWITCH    1   // = D0
 
+// Audio Transceiver Board 
 /*
 #define UART_RX       18
 #define UART_TX       17
 */
 
-
+// XIAO Board
 #define UART_RX       44
 #define UART_TX       43

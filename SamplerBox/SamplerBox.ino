@@ -31,10 +31,10 @@ SOFTWARE.
 #define PACKET_LENGTH_BYTES   32
 
 #include "BoardPin.h"        // Board-specific pin definitions
-// #include "Button.h"          // Button handling library
-#include "Stream_I2S.h"      // I2S audio output functions
-#include "Stream_RS485.h"
-#include "Stream_TestSignals.h"
+
+#include "Stream_I2S.h"           // I2S audio functions
+#include "Stream_RS485.h"         // library for audio stream over RS485
+#include "Stream_TestSignals.h"   // library to fill the samples to be output with a triangle test signal
 
 
 // === INITIALIZATION (Runs Once at Startup) ===
@@ -43,33 +43,26 @@ void setup() {
   delay(200);
   Serial.println("Sampler starting");
 
-  RS485_Start(UART_RX, UART_TX);
+  RS485_Start(UART_RX, UART_TX);      // start UART/RS485 with 3 Mbit/s 
   delay(200);
 
 
   // --- I2S (Audio Output) Setup ---
-  AudioMode = AUDIO_MODE_SAMPLER;
+  AudioMode = AUDIO_MODE_SAMPLER;      // I2S driver is used for sampling 
   samplebuffer_count = 2;
   samplebuffer_length = 8;
   samplerate = 32000;        // audio sample rate
   audiochannelcount = 2;     // Stereo
-  externalclock = 0;
+  externalclock = 0;         // no external clock, so use ESP32 as master
   I2S_Start();
   delay(200);
 
-  Serial.println("Init done!");
+  TestSignal_SetType(TESTSIGNAL_TRIANGLE_STEREO);     // set the type of the test signal. a different tone for left and right loudspeaker
 
-  TestSignal_SetType(TESTSIGNAL_TRIANGLE_STEREO);
-
-  pinMode(PIN_SWITCH, INPUT_PULLUP);
-
-  // --- Button Setup ---
-  //Button_Init();  
+  pinMode(PIN_SWITCH, INPUT_PULLUP);                  // a switch is used to generate test signal
 
 }
 
-
-uint8_t buttonp = 0;             // Button event value (0=no event, 1=short press, 2=long press)
 
 
 // === GLOBAL BUFFERS FOR AUDIO DATA ===
@@ -78,17 +71,17 @@ int16_t mBuffer[32];
 
 void loop() 
 {
-      if ( digitalRead(PIN_SWITCH) == 1 ) 
+      if ( digitalRead(PIN_SWITCH) == 1 )       // switch not active
       {
-        I2S_ReadBytesInBuffer(byteBuffer, 32);
-        RS485_WriteBytesFromBuffer(byteBuffer, 32);  
-        delayMicroseconds(10); 
+        I2S_ReadBytesInBuffer(byteBuffer, 32);        // sample date
+        RS485_WriteBytesFromBuffer(byteBuffer, 32);   // and put to the RS485 bus  
+        delayMicroseconds(10);                        // recommended for stability
       }
-      else
+      else                                     // switch active
       {
-        I2S_ReadBytesInBuffer(byteBuffer, 32);
-        TestSignal_ReadSamplesInBuffer(mBuffer, 16);
-        RS485_WriteSamplesFromBuffer(mBuffer, 16);
+        I2S_ReadBytesInBuffer(byteBuffer, 32);       // sample data, but do not use it (this is for the right timing, as we want create data with a defined sample rate)
+        TestSignal_ReadSamplesInBuffer(mBuffer, 16); // generate test signals and put in mBuffer
+        RS485_WriteSamplesFromBuffer(mBuffer, 16);   // put the test signal data to the RS485 bus
         delayMicroseconds(10);
       }      
 }

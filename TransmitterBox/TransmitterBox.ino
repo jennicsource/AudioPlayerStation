@@ -40,49 +40,28 @@ void setup() {
   delay(400);
   Serial.println("Gateway starting");
 
-  RS485_Start(UART_RX, UART_TX);
+  RS485_Start(UART_RX, UART_TX);  //  start UART with 3 MBit/s
 
-  pinMode(PIN_SWITCH, INPUT_PULLUP);
+  pinMode(PIN_SWITCH, INPUT_PULLUP);  // switch determines if radio module sends out something or not
 
-  Radio_Init(1);
-  //Radio1_Start(RADIO_MODE_SENDER);
+  Radio_Init(1);                      // 1 for default channel 90, 2 for default channel 125. this must be different when you use 2 radio modules sending!
 
-  Radio_Start(1, RADIO_MODE_SENDER, pCE, pCS);
+  Radio_Start(1, RADIO_MODE_SENDER, pCE, pCS);   //  start radio module 1 as sender
 
 }
 
 
 uint8_t byteBuffer[128];
-int16_t musicBuffer[32];
 
-
-
-void loop() {
-  
-      int16_t PacketNumberOrInvalid = RS485_ReadBytesInBufferGetPacketNumber(byteBuffer, 32);
+void loop() 
+{
+      int16_t PacketNumberOrInvalid = RS485_ReadBytesInBufferGetPacketNumber(byteBuffer, 32);   // read audio data bytes from RS485 bus in byteBuffer and get the Packet number via RS485 at the same time
 
       if ( PacketNumberOrInvalid != -1 )      // we received a valid packet
       {
+        if ( digitalRead(PIN_SWITCH) == 1 )  Radio_WriteBytesFromBufferWithPacketNumber(byteBuffer, 32, PacketNumberOrInvalid);   //  transmit the audio data bytes and imprint the packet number in the lowest bit (this function reduces audio resolution then from 16 to 15 bit)
         
-        memcpy(&musicBuffer, &byteBuffer, 32);
-
-        for (uint8_t s = 0; s < 16; s++)
-        {      
-          musicBuffer[s] = musicBuffer[s] &  0b1111111111111110;
-
-          if (s < 8)
-          {
-            uint8_t bitresult = ( PacketNumberOrInvalid & ( 1 << s ) ) >> s;
-            musicBuffer[s] = musicBuffer[s] +  bitresult;
-          }
-
-        } 
-
-        memcpy(&byteBuffer, &musicBuffer, 32);
-        
-        if ( digitalRead(PIN_SWITCH) == 1 ) Radio_WriteBytesFromBuffer(byteBuffer, 32);
-
-        delayMicroseconds(40);
+        delayMicroseconds(20);
       }
 
 }

@@ -16,9 +16,9 @@
 
 
 
-#define UART_RX       18
+#define UART_RX       18      // hardware UART of ESP32-S3
 #define UART_TX       17
 
-#define PIN_SWITCH     5
+#define PIN_SWITCH     5   // switch connected to GPIO5
 
 
