@@ -24,8 +24,9 @@ SOFTWARE.
 */
 
 
-
 #include <Arduino.h>
+
+String FirmwareVersion = "V 0.71";
 
 #define PACKET_LENGTH_SAMPLES 16
 #define PACKET_LENGTH_BYTES   32
@@ -61,7 +62,7 @@ SOFTWARE.
 
 
 uint8_t DeviceAddress = 1;    // Device Address, will be configured by DIP switch
-uint8_t Tuning_Live = 1;      // Tuning in action or not
+uint8_t Tuning_Mode = 1;      // Tuning Mode: 1 = just to prevent drift, max adaption for correction factor = 1000 ; 2: max adaption = 20000
 
 
 // === INITIALIZATION (Runs Once at Startup) ===
@@ -103,8 +104,8 @@ void setup()
   //SignalInput = SIGNAL_DIGITAL;  // RS485 can be selected here
   
  
-  Process_SetParameters(COMMAND_VOLUME, AUDIOOUTPUT_CHANNEL_BOTH, 60);
-  ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_VOLUME, 0, 60 );
+  Process_SetParameters(COMMAND_VOLUME, AUDIOOUTPUT_CHANNEL_BOTH, 20);
+  ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_VOLUME, 0, 20 );
 
 
   if ( Config_GetValue(CCHAN_DEVICE_SUBSAT) == 1 ) 
@@ -118,7 +119,7 @@ void setup()
 
   Output_SetValue( OCHAN_INPUT, SignalInput );
   Output_SetValue( OCHAN_DEVICENUMBER, DeviceAddress );
-  Output_ShowValue( OCHAN_LEVEL_VOLUME, 60 );    // let the output interface know about the default volume
+  Output_ShowValue( OCHAN_LEVEL_VOLUME, 20 );    // let the output interface know about the default volume
 
     // --- I2S (Audio Output) Setup ---
   AudioMode = AUDIO_MODE_PLAYER;
@@ -136,6 +137,7 @@ void setup()
   I2S_Clock_Init(SAMPLERATE_INDEX_32KHZ_32BIT, CurrentCorrection);   // start the clock with the current correction
 
   Sync_Init(8);    // Initialize Live-Tuning with a GateTimeFactor of 8 = 1250000 packets
+  Sync_SetMaxAdaption(1000);
   
   StartUARTTask();    // start the task for the UART/RS485 receiving of packets in the Core0 module
   StartAudioTask();   // start the task for the audio (receiving packets, processing, output to the DAC) in the Core0 module
@@ -153,12 +155,21 @@ int32_t LimitValue(int32_t CurrentValue, int32_t LowerLimit, int32_t UpperLimit)
   return ResultValue;
 }
 
+int32_t CycleValue(int32_t CurrentValue, int32_t LowerLimit, int32_t UpperLimit)
+{
+  int32_t ResultValue = CurrentValue;
+  if (ResultValue < LowerLimit) ResultValue = UpperLimit;
+  if (ResultValue > UpperLimit) ResultValue = LowerLimit;
+  return ResultValue;
+}
+
 
 int32_t CurrentMaxValueInputLeft;
 int32_t CurrentMaxValueInputRight;
 
 #define COMMAND_SIGNALINPUT  73   // I
 #define COMMAND_DISPLAYMODE  89   // Y
+#define COMMAND_TUNINGMODE   85   // U
 
 
 
@@ -240,6 +251,14 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
         case COMMAND_DISPLAYMODE:
             Output_SetDisplayMode( LimitValue(ValueReceived, 0, 2) );
             Output_Refresh(REFRESHTYPE_FULL);
+          break;
+
+        case COMMAND_TUNINGMODE:
+            if (Tuning_Mode == 1) Sync_SetMaxAdaption(1000);
+            if (Tuning_Mode == 2) Sync_SetMaxAdaption(40000);
+            Output_SetValue( OCHAN_TUNING, Tuning_Mode );
+            Output_Refresh(REFRESHTYPE_FULL);
+            Serial.println(Tuning_Mode);
           break;
 
         case COMMAND_FILTERBANK:
@@ -327,7 +346,13 @@ void loop()
       if ( iValue == 1 ) CommandAndDisplay(COMMAND_MAXVALUE, 0, 0); 
       if ( iValue == 2 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 0); 
       if ( iValue == 3 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 1); 
-      if ( iValue == 4 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 2); 
+      if ( iValue == 4 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 2);
+      if ( iValue == 5 ) 
+      {
+        Tuning_Mode++;
+        Tuning_Mode = CycleValue(Tuning_Mode, 1, 2);
+        CommandAndDisplay(COMMAND_TUNINGMODE, 0, Tuning_Mode);
+      }
     }
 
   }

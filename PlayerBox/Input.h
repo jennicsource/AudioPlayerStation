@@ -154,6 +154,12 @@ void Input_Loop()
         Input_Value_Changed[ICHAN_SET] = true;
     }
 
+    if (IRCode == 3772797103)   //   Key 6
+    {
+        Input_Value[ICHAN_SET] = 5;
+        Input_Value_Changed[ICHAN_SET] = true;
+    }
+
 
 
   }

@@ -18,6 +18,7 @@
 #define OCHAN_MAXVALUE_RIGHT 14
 #define OCHAN_PARAMETRIC     15
 #define OCHAN_FILTERBANK     16
+#define OCHAN_TUNING         17
 
 
 #define ERROR_ACTUATOR      1
@@ -130,7 +131,7 @@ void Display_ShowNumber(String text, uint16_t Number, String SecondLineText)
   oled.setTextSize(3); // 
   oled.setTextColor(SH110X_WHITE);
   oled.setCursor(17, 22);
-  oled.println(text + " " + String(Number));
+  oled.println(text + String(Number));
 
   oled.setTextSize(2); // 
   oled.setTextColor(SH110X_WHITE);
@@ -215,8 +216,9 @@ void Output_Refresh(uint8_t RefreshType)
             TextToBeShown = "V";
             if ( Output_Value[OCHAN_INPUT] == SIGNAL_AIR )     TextSecondLineToBeShown = "Air";
             if ( Output_Value[OCHAN_INPUT] == SIGNAL_DIGITAL ) TextSecondLineToBeShown = "RS485";
-            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_MONO ) TextSecondLineToBeShown = "T_MONO";
-            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_STEREO ) TextSecondLineToBeShown = "T_STEREO";
+            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_MONO ) TextSecondLineToBeShown = "TEST_M";
+            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_STEREO ) TextSecondLineToBeShown = "TEST_S";
+            if ( Output_Value[OCHAN_TUNING] == 2 ) TextSecondLineToBeShown = "T-" + TextSecondLineToBeShown;
             Display_ShowNumber(TextToBeShown, NumberToBeShown, TextSecondLineToBeShown); 
           }
           if (DisplayMode == 1)
@@ -225,15 +227,16 @@ void Output_Refresh(uint8_t RefreshType)
             TextToBeShown = String( Output_Value[OCHAN_MAXVALUE_LEFT] ) + "/";
             if ( Output_Value[OCHAN_INPUT] == SIGNAL_AIR )     TextSecondLineToBeShown = "Air";
             if ( Output_Value[OCHAN_INPUT] == SIGNAL_DIGITAL ) TextSecondLineToBeShown = "RS485";
-            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_MONO ) TextSecondLineToBeShown = "T_MONO";
-            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_STEREO ) TextSecondLineToBeShown = "T_STEREO";
+            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_MONO ) TextSecondLineToBeShown = "TEST_M";
+            if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_STEREO ) TextSecondLineToBeShown = "TEST_S";
+            if ( Output_Value[OCHAN_TUNING] == 2 ) TextSecondLineToBeShown = "T-" + TextSecondLineToBeShown;
             Display_ShowNumber(TextToBeShown, NumberToBeShown, TextSecondLineToBeShown); 
           }
           if (DisplayMode == 2)
           {
             NumberToBeShown = Output_Value[OCHAN_DEVICENUMBER];
             TextToBeShown = "#";
-            TextSecondLineToBeShown = "Firm";
+            TextSecondLineToBeShown = FirmwareVersion;
             Display_ShowNumber(TextToBeShown, NumberToBeShown, TextSecondLineToBeShown); 
           }
        
