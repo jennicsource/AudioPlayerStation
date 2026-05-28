@@ -63,8 +63,6 @@ MISO IR          orange
 
 #define PIN_IR          7    // pin for the attached IR receiver
 
-#define PIN_AUX_AUDIO   42   // pin which should be switched
-
 
 // this is for the XIAO ESP32-S3 board
 /*

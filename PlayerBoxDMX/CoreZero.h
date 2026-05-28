@@ -16,6 +16,7 @@ int16_t musicBuffer[32];
 #include <esp_task_wdt.h>             // this ESP32 lib is needed to reset the watchdog regularly, otherwise the controller will be reset after short amount of time
 TaskHandle_t AudioTaskHandle = NULL;  // needed for task programming
 TaskHandle_t UARTTaskHandle = NULL;
+TaskHandle_t DMXTaskHandle = NULL;
 
 uint8_t SetupDone = 0;                // the tasks contain endless loops. if you want to do something just at the start, you must set this flag afterwards, and the setup wont be processed again
 int32_t lastWatchdogReset = 0;        // needed to regularly reset the watchdog
@@ -58,7 +59,36 @@ void UARTTask(void *parameter)         // one of the tasks running on Core 0
 }
 
 
-uint8_t AuxParam = 0;
+
+
+void DMXTask(void *parameter)         // one of the tasks running on Core 0
+{
+  for (;;) 
+  { // Infinite loop
+    
+    //if (dmxSend.readyToTransmit()) 
+    //{  // readyToTransmit uses the available space in the 
+                              // Tx buffer + Tx FIFO as a reference set during configure
+    //if (1) { // uncomment this line and comment the previous one to confirm it works as intended
+    
+    /*
+      dmxSend.transmit();  // transmit blocks for the duration of the previous transmission
+                          // plus the duration of the break. 
+                          
+      
+      dmxSend.write(light, 27);
+      dmxSend.write(light, 28);
+      dmxSend.write(light, 29);
+    */
+      if (light == 40) digitalWrite(PIN_LED, HIGH);
+      if (light == 0) digitalWrite(PIN_LED, LOW);
+    
+
+    //}  
+  }
+}
+
+
 
 void AudioTask(void *parameter)    // the task for Audio processing
 {
@@ -82,9 +112,6 @@ void AudioTask(void *parameter)    // the task for Audio processing
         Serial.println("TUNING - in ppb: " + String(TuneResult) );   
         Config_SetValue(CCHAN_CORRECTION, CurrentCorrection);       // put the new correction factor to the Config module
         Config_StoreValues();                                       // and store the new value in the non-volatile memory
-        
-        Output_SetValue( OCHAN_TUNING_VALUE, CurrentCorrection );
-        Output_ShowEvent( EVENT_SHOW_TUNING, 2000 ); 
       };
        
 
@@ -92,27 +119,26 @@ void AudioTask(void *parameter)    // the task for Audio processing
       {  
         PacketReceivingModule = Radio_PacketCheckDual();    // check if packet was received  
 
-        if ( PacketReceivingModule == 1  || PacketReceivingModule == 2 )  // packet received by module 1 or 2
+        if ( PacketReceivingModule == 1  || PacketReceivingModule == 2 )  // packet received by module 1
         {         
-          PacketNumber = (uint32_t)Radio_ReadSamplesInBufferGetPacketNumber(PacketReceivingModule, mBuffer, PACKET_LENGTH_SAMPLES);  // read the data from the radio module 1 or 2 and get the packet number
+          PacketNumber = (uint32_t)Radio_ReadSamplesInBufferGetPacketNumber(PacketReceivingModule, mBuffer, PACKET_LENGTH_SAMPLES);  // read the data from radio module 1
 
-          if ( LastPacketNumber > PacketNumber ) OverflowPacketNumber++;  // packetnumbers are from 0..255 (8 bit). so we must look for overflows
+          if ( LastPacketNumber > PacketNumber ) OverflowPacketNumber++;
           LastPacketNumber = PacketNumber;
           
-          int32_t FullPacketNumber = ( OverflowPacketNumber << 8 ) + PacketNumber;   // that is the ongoing 31 bit packet number. so after around 70 hours, we will also have an overflow here
-          int32_t PacketNumberDifference = FullPacketNumber - LastFullPacketNumber;  // determine the difference to the last packet number we received
+          int32_t FullPacketNumber = ( OverflowPacketNumber << 8 ) + PacketNumber;
+          int32_t PacketNumberDifference = FullPacketNumber - LastFullPacketNumber;
 
           if ( PacketNumberDifference == 1 )
           {
-            Output_ShowValue(OCHAN_DATAFLOW, 1);      // everything is good. visualize this via the output module (in that case, a blue LED is off)
+            Output_ShowValue(OCHAN_DATAFLOW, 1);
             //digitalWrite(PIN_LED, LOW); 
           }
           
-          if ( ( PacketNumberDifference < 3 ) && ( PacketNumberDifference > 0 ) )   // that is still a good reception
+          if ( ( PacketNumberDifference < 3 ) && ( PacketNumberDifference > 0 ) )
           {
             ValidPacket = 1;
-            Process_Process(mBuffer, exmBuffer, 16);    // send the data to the audio processing module 
-            AuxParam = Process_GetAuxParameter(); 
+            //Process_Process(mBuffer, exmBuffer, 16);
           }
 
           LastFullPacketNumber = FullPacketNumber;
@@ -120,13 +146,14 @@ void AudioTask(void *parameter)    // the task for Audio processing
           Sync_WritePacketNumberTestPacketCounterOnOverflow( PacketNumber );   // write the packetnumber (0..255) to the tuning function, which also checks the overflow
         }
 
-        int32_t CValue = Sync_GetPinCounterValue();   // we take the pin counter (word clock frequency) to measure the time
-        if ( ( CValue - LastCValue ) > 8 )   // if we did not get a new valid packet in the 8 word clocks timeframe, the packet is late or disturbed
+         
+        int32_t CValue = Sync_GetPinCounterValue();
+        if ( ( CValue - LastCValue ) > 8 )
         {
           if ( ValidPacket == 0 )
           {
-            memcpy(exmBuffer, zeroexmBuffer, 64);   // then we send zeroes to the music buffer, instead of bad data or old data
-            Output_ShowValue(OCHAN_DATAFLOW, 0);    // and visualize via the output module that the dataflow is bad (in that case, a blue LED is on)
+            memcpy(exmBuffer, zeroexmBuffer, 64); 
+            Output_ShowValue(OCHAN_DATAFLOW, 0);
           }
           else
           {
@@ -135,48 +162,37 @@ void AudioTask(void *parameter)    // the task for Audio processing
           LastCValue = CValue;
         }
 
-        I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // and at the end, we write the data to the I2S driver to let them output via the DAC
-        
-        if (DisplayMode2 == 1)
-        {
-          if (AuxParam == 255)
-          {
-            digitalWrite(PIN_AUX_AUDIO, HIGH);
-          }
-          else
-          {
-            digitalWrite(PIN_AUX_AUDIO, LOW);
-          }
-        }
+        I2S_WriteSamplesFromBuffer(mBuffer, 16);
 
+        
       }
 
 
-      if (SignalInput == SIGNAL_TEST_MONO)     // generates the same triangle test signal on both input channels
+      if (SignalInput == SIGNAL_TEST_MONO)  
       {
         TestSignal_SetType(TESTSIGNAL_TRIANGLE_MONO);
         TestSignal_ReadSamplesInBuffer(mBuffer, 16);
         
-        Process_Process(mBuffer, exmBuffer, 16);  // process the data
-        I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // and send it to the DAC
+        Process_Process(mBuffer, exmBuffer, 16);
+        I2S_WriteSamplesFromBuffer(mBuffer, 16); 
       }  
 
 
-      if (SignalInput == SIGNAL_TEST_STEREO)  // generates the 2 different triangle test signals on both input channels
+      if (SignalInput == SIGNAL_TEST_STEREO) 
       {
         TestSignal_SetType(TESTSIGNAL_TRIANGLE_STEREO);
         TestSignal_ReadSamplesInBuffer(mBuffer, 16);
         
-        Process_Process(mBuffer, exmBuffer, 16);  // process the data
-        I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // and send it to the DAC
+        //Process_Process(mBuffer, exmBuffer, 16);
+        I2S_WriteSamplesFromBuffer(mBuffer, 16); 
       }  
 
 
       if (SignalInput == SIGNAL_DIGITAL)     // input via wireless transmission
       { 
         memcpy(mBuffer, byteBuffer, 32);     // the data are put regularly in the byteBuffer by the UARTtask
-        Process_Process(mBuffer, exmBuffer, 16);   // process the data
-        I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // put the data to the DAC
+        //Process_Process(mBuffer, exmBuffer, 16);
+        I2S_WriteSamplesFromBuffer(mBuffer, 16);   // put the data to the DAC
       }  
 
 
@@ -207,6 +223,22 @@ void StartUARTTask()
     1,                 // Priority
     &UARTTaskHandle,  // Task handle
     0                  // Core 0
+  );
+}
+
+
+
+// the functions to start the tasks running on Core 0
+void StartDMXTask() 
+{
+ xTaskCreatePinnedToCore(
+    DMXTask,         // Task function
+    "DMXTask",       // Task name
+    100000,             // Stack size (bytes)
+    NULL,              // Parameters
+    2,                 // Priority
+    &DMXTaskHandle,  // Task handle
+    1                  // Core 0
   );
 }
 

@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include <Arduino.h>
 
-String FirmwareVersion = "V 0.75";
+String FirmwareVersion = "V 0.73";
 
 #define PACKET_LENGTH_SAMPLES 16
 #define PACKET_LENGTH_BYTES   32
@@ -39,7 +39,29 @@ String FirmwareVersion = "V 0.75";
 #define SIGNAL_TEST_STEREO   5
 
 
+
+
 #include "BoardPin.h"        // Board-specific pin definitions
+
+/*
+#include <Dmx_ESP32.h>
+
+// https://github.com/devarishi7/Dmx_ESP32/blob/main/README.md
+
+#define TX_PIN    UART_TX
+#define TX_ENABLE -1 // there is no real benefit in using an actual pin to do this
+                     // unlike for reception where disabling input stops the RMT & UART 
+                     // interrupt callbacks from being called. The DE can be hardwired to 
+                     // Vcc of the transceiver
+
+#define DMX_PORT &Serial1
+
+dmxTx dmxSend(DMX_PORT, TX_PIN, TX_ENABLE, 8, LOW);
+*/
+
+uint8_t light = 0;
+
+
 #include "Config.h"          // Module for configuration values (DIP switch and non-volatile memory) 
 
 #include "Radio_nRF24.h"     // radio library
@@ -58,11 +80,21 @@ String FirmwareVersion = "V 0.75";
 #include "ESP_NOW_Control.h"  // library for remote control via ESP-NOW
 #include "Serial_Control.h"   // library for remote control via Serial interface
 
+
+
+
+
+
+
+
+
 #include "CoreZero.h"         // the functions which run on CoreZero are integrated here
 
 
+
+
 uint8_t DeviceAddress = 1;    // Device Address, will be configured by DIP switch
-uint8_t Tuning_Mode = 1;      // Tuning Mode: 1 = just to prevent drift, max adaption for correction factor = 1000 ; 2: max adaption = 20000; 3: no sync
+uint8_t Tuning_Mode = 1;      // Tuning Mode: 1 = just to prevent drift, max adaption for correction factor = 1000 ; 2: max adaption = 20000
 
 
 // === INITIALIZATION (Runs Once at Startup) ===
@@ -102,25 +134,23 @@ void setup()
   SignalInput = SIGNAL_AIR;        // Default: wireless transmission
   //SignalInput = SIGNAL_DIGITAL;  // RS485 can be selected here
    
-  Process_SetParameters(COMMAND_VOLUME, AUDIOOUTPUT_CHANNEL_BOTH, 60);  // put the volume on 60%
-  ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_VOLUME, 0, 60 );   // sent the value to the remote controller. 100 + command number means a value is sent, not a command 
+  Process_SetParameters(COMMAND_VOLUME, AUDIOOUTPUT_CHANNEL_BOTH, 60);
+  ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_VOLUME, 0, 60 );
 
 
-  if ( Config_GetValue(CCHAN_DEVICE_SUBSAT) == 1 )   // Subwooder and Satellite combination. left output channel is satellite, right output channel is sub
+  if ( Config_GetValue(CCHAN_DEVICE_SUBSAT) == 1 ) 
   {
-    if ( (DeviceAddress & 0x01) == 0 ) Process_SetParameters(COMMAND_ROUTING, 0, ROUTING_EXPAND_RIGHT);  //  for device address 2 and 4, the right input channel is mapped to both output channels
-    if ( (DeviceAddress & 0x01) == 1 ) Process_SetParameters(COMMAND_ROUTING, 0, ROUTING_EXPAND_LEFT);   //  for device address 1 and 3, the left input channel is mapped to both output channels
+    if ( (DeviceAddress & 0x01) == 0 ) Process_SetParameters(COMMAND_ROUTING, 0, ROUTING_EXPAND_RIGHT);
+    if ( (DeviceAddress & 0x01) == 1 ) Process_SetParameters(COMMAND_ROUTING, 0, ROUTING_EXPAND_LEFT);
     
-    Process_SetParameters(COMMAND_BASSBALANCE,    AUDIOOUTPUT_CHANNEL_SUB, 100);   // Bass - Satellite volume ratio = 100%
-    Process_SetParameters(COMMAND_LOWPASS,        AUDIOOUTPUT_CHANNEL_SUB, 80);   // lowpass filter for subwoofer output channel 80 Hz
+    Process_SetParameters(COMMAND_BASSBALANCE,    AUDIOOUTPUT_CHANNEL_SUB, 100);
+    Process_SetParameters(COMMAND_LOWPASS,        AUDIOOUTPUT_CHANNEL_SUB, 100);
   }
 
-  Process_SetParameters(COMMAND_LOWPASS,        AUDIOOUTPUT_CHANNEL_AUX, 120);
 
-  Output_SetValue( OCHAN_TUNING, Tuning_Mode );
-  Output_SetValue( OCHAN_INPUT, SignalInput );    // let the output interface know about the signal input
-  Output_SetValue( OCHAN_DEVICENUMBER, DeviceAddress );   // let the output interface know about the Device address
-  Output_ShowValue( OCHAN_LEVEL_VOLUME, 60 );    // let the output interface know about the default volume and show the values
+  Output_SetValue( OCHAN_INPUT, SignalInput );
+  Output_SetValue( OCHAN_DEVICENUMBER, DeviceAddress );
+  Output_ShowValue( OCHAN_LEVEL_VOLUME, 60 );    // let the output interface know about the default volume
 
     // --- I2S (Audio Output) Setup ---
   AudioMode = AUDIO_MODE_PLAYER;
@@ -131,11 +161,12 @@ void setup()
   audiochannelcount = 2;     // Stereo
   expandchannels = 0;        
   externalclock = 1;         // we use the external clock, so ESP32 in slave mode
-  volumecontrol = 1;         // we use volume control, so expanding 16 bit to 32 bit so no resolution is lost
+  volumecontrol = 0;         // we use volume control, so expanding 16 bit to 32 bit so no resolution is lost
   I2S_Start();
   delay(200);
 
-  I2S_Clock_Init(SAMPLERATE_INDEX_32KHZ_32BIT, CurrentCorrection);   // start the clock with the current correction
+  //I2S_Clock_Init(SAMPLERATE_INDEX_32KHZ_32BIT, CurrentCorrection);   // start the clock with the current correction
+  I2S_Clock_Init(SAMPLERATE_INDEX_32KHZ_16BIT, CurrentCorrection);
 
   Sync_Init(8);    // Initialize Live-Tuning with a GateTimeFactor of 8 = 1250000 packets
   Sync_SetMaxAdaption(1000);
@@ -143,11 +174,22 @@ void setup()
   StartUARTTask();    // start the task for the UART/RS485 receiving of packets in the Core0 module
   StartAudioTask();   // start the task for the audio (receiving packets, processing, output to the DAC) in the Core0 module
  
+
+/*
+  if (!dmxSend.configure()) {
+    Serial.println("DMX Tx was previously configured.");
+  }
+  Serial.println("DMX initialized!");
+
+  StartDMXTask(); 
+
+*/
+  
 }
 
 
 
-// a helper function to limit a value to an upper and lower limit
+
 int32_t LimitValue(int32_t CurrentValue, int32_t LowerLimit, int32_t UpperLimit)
 {
   int32_t ResultValue = CurrentValue;
@@ -156,7 +198,6 @@ int32_t LimitValue(int32_t CurrentValue, int32_t LowerLimit, int32_t UpperLimit)
   return ResultValue;
 }
 
-// a helper function to limit a value to an upper and lower limit, but when exceeding the upper limit, it goes to the lower limit, and vice versa
 int32_t CycleValue(int32_t CurrentValue, int32_t LowerLimit, int32_t UpperLimit)
 {
   int32_t ResultValue = CurrentValue;
@@ -169,14 +210,12 @@ int32_t CycleValue(int32_t CurrentValue, int32_t LowerLimit, int32_t UpperLimit)
 int32_t CurrentMaxValueInputLeft;
 int32_t CurrentMaxValueInputRight;
 
-// these commands can be sent by the remote control, but are outside the audio processing
 #define COMMAND_SIGNALINPUT  73   // I
 #define COMMAND_DISPLAYMODE  89   // Y
-#define COMMAND_DISPLAYMODE2 90   // Z
 #define COMMAND_TUNINGMODE   85   // U
 
 
-// this is the function to process a received command
+
 void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceived, int32_t ValueReceived)
 {
     int32_t currentValue;
@@ -189,7 +228,7 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
             Output_ShowValue( OCHAN_LEVEL_VOLUME, currentValue );   // show the new value on display
             Output_ShowEvent( EVENT_MESSAGE_RECEIVED, 700 );        // show that a message was received for 700 ms (with LED)
 
-            delay(DeviceAddress * 50 + 70);                         // small delay before new value is sent to remote control. this command is working on multiple player boxes, so all player boxes will send an answer
+            delay(DeviceAddress * 50 + 70);                         // small delay before new value is sent to remote control
             ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_VOLUME, 0, currentValue );  // send the new value via ESP-NOW 
           break;
 
@@ -241,32 +280,32 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
           break;
 
         case COMMAND_LOWPASS:
-            if (Config_GetValue(CCHAN_DEVICE_SUBSAT) == 1)   // when we feed a sub and a satellite
+            if (Config_GetValue(CCHAN_DEVICE_SUBSAT) == 1) 
             {
-              AudioOutputChannelReceived = AUDIOOUTPUT_CHANNEL_SUB;   // the lowpass will just used for the sub output channel
-              ValueReceived = LimitValue(ValueReceived, 20, 200);     // and it must stay between 20 and 200 Hz
+              AudioOutputChannelReceived = AUDIOOUTPUT_CHANNEL_SUB;
+              ValueReceived = LimitValue(ValueReceived, 20, 200);
             }  
             else
             {
-              ValueReceived = LimitValue(ValueReceived, 0, 15000);   // otherwise the lowpass is used for both output channels
+              ValueReceived = LimitValue(ValueReceived, 0, 15000);
             }     
             
             currentValue = Process_SetParameters(CommandReceived, AudioOutputChannelReceived, ValueReceived);
             Output_SetValue( OCHAN_LOWPASS, currentValue );
             Output_ShowEvent( EVENT_SHOW_LOWPASS, 2000 );
 
-            delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
+            delay(DeviceAddress * 50 + 70);
             ESP_NOW_Send_Command( 0, 100 + COMMAND_LOWPASS, AudioOutputChannelReceived, currentValue );            
           break;
 
         case COMMAND_HIGHPASS:
-            if (Config_GetValue(CCHAN_DEVICE_SUBSAT) == 1) AudioOutputChannelReceived = AUDIOOUTPUT_CHANNEL_SAT;  // when we feed a sub and a satellite the highpass will just used for the satellite output channel
+            if (Config_GetValue(CCHAN_DEVICE_SUBSAT) == 1) AudioOutputChannelReceived = AUDIOOUTPUT_CHANNEL_SAT;
             ValueReceived = LimitValue(ValueReceived, 0, 15000);
             currentValue = Process_SetParameters(CommandReceived, AudioOutputChannelReceived, ValueReceived);
             Output_SetValue( OCHAN_HIGHPASS, currentValue );
             Output_ShowEvent( EVENT_SHOW_HIGHPASS, 2000 ); 
 
-            delay(DeviceAddress * 50 + 70);    // this command is working on multiple player boxes, so all player boxes will send an answer
+            delay(DeviceAddress * 50 + 70);
             ESP_NOW_Send_Command( 0, 100 + COMMAND_HIGHPASS, AudioOutputChannelReceived, currentValue );
           break;
 
@@ -277,12 +316,14 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
             Output_SetValue( OCHAN_PARAMETRIC, currentValue );
             Output_ShowEvent( EVENT_SHOW_PARAMETRIC, 2000 ); 
 
+            Serial.println("Audio:" + String(AudioOutputChannelReceived) );
+
             //delay(DeviceAddress * 50 + 70);
             //ESP_NOW_Send_Command( 0, 100 + COMMAND_PARAMETRIC, AudioOutputChannelReceived, currentValue );
           break;
 
         case COMMAND_SIGNALINPUT:
-            SignalInput = LimitValue(ValueReceived, 1, 5);    // change the signal input. it must be between 1 and 5
+            SignalInput = LimitValue(ValueReceived, 1, 5);
             Output_ShowValue( OCHAN_INPUT, SignalInput );
             Output_ShowEvent( EVENT_MESSAGE_RECEIVED, 700 );  
             ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_SIGNALINPUT, 0, SignalInput);  
@@ -293,19 +334,13 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
           break;
 
         case COMMAND_DISPLAYMODE:
-            Output_SetDisplayMode( LimitValue(ValueReceived, 0, 2) );  // set the display mode, between 0 and 2
-            Output_Refresh(REFRESHTYPE_FULL);
-          break;
-
-        case COMMAND_DISPLAYMODE2:
-            Output_StepDisplayMode2( LimitValue(ValueReceived, 1, 1) );  // increase DisplayMode2 by 1
+            Output_SetDisplayMode( LimitValue(ValueReceived, 0, 2) );
             Output_Refresh(REFRESHTYPE_FULL);
           break;
 
         case COMMAND_TUNINGMODE:
-            if (Tuning_Mode == 1) Sync_SetMaxAdaption(1000);     // tuning mode with only small steps allowed (for temp drift)
-            if (Tuning_Mode == 2) Sync_SetMaxAdaption(40000);    // tuning mode to tune to a new sender. big steps are allowed
-            if (Tuning_Mode == 3) Sync_SetMaxAdaption(0);    // tuning mode to tune to a new sender. big steps are allowed
+            if (Tuning_Mode == 1) Sync_SetMaxAdaption(1000);
+            if (Tuning_Mode == 2) Sync_SetMaxAdaption(40000);
             Output_SetValue( OCHAN_TUNING, Tuning_Mode );
             Output_Refresh(REFRESHTYPE_FULL);
             //Serial.println(Tuning_Mode);
@@ -327,36 +362,36 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
 
 
 
-// the loop is responsible for receiving commands via serial interface, via IR remote control or via ESP-NOW
+
 void loop() 
 {
-  // the following code is repeatedly requesting a new maximum value of input data, for both input channels
+
   int32_t NewMaxValueInputLeft =  Process_GetParameter(COMMAND_MAXVALUE, AUDIOINPUT_CHANNEL_LEFT);
   int32_t NewMaxValueInputRight = Process_GetParameter(COMMAND_MAXVALUE, AUDIOINPUT_CHANNEL_RIGHT);
-  if ( ( NewMaxValueInputLeft != CurrentMaxValueInputLeft ) || ( NewMaxValueInputRight != CurrentMaxValueInputRight ) )   // we have a new max value
+  if ( ( NewMaxValueInputLeft != CurrentMaxValueInputLeft ) || ( NewMaxValueInputRight != CurrentMaxValueInputRight ) ) 
   {
     CurrentMaxValueInputLeft =  NewMaxValueInputLeft;
     CurrentMaxValueInputRight = NewMaxValueInputRight;
-    Output_SetValue(  OCHAN_MAXVALUE_LEFT,  ( CurrentMaxValueInputLeft  * 1000 ) / 327680 );   // let the output module know about the new max value
-    Output_ShowValue( OCHAN_MAXVALUE_RIGHT, ( CurrentMaxValueInputRight * 1000 ) / 327680 );   // and show it on the display
+    Output_SetValue(  OCHAN_MAXVALUE_LEFT,  ( CurrentMaxValueInputLeft  * 1000 ) / 327680 ); 
+    Output_ShowValue( OCHAN_MAXVALUE_RIGHT, ( CurrentMaxValueInputRight * 1000 ) / 327680 ); 
   }
 
-  if (ESP_NOW_Received() == 1)    // we have a new ESP NOW message
+  if (ESP_NOW_Received() == 1)
   {
-      int32_t ValueReceived =   ESP_NOW_GetIntParam();  // retrieve the value, the command, the device address, and the audio channel 
+      int32_t ValueReceived =   ESP_NOW_GetIntParam();
       uint8_t CommandReceived = ESP_NOW_GetCommand();
       uint8_t AddressReceived = ESP_NOW_GetAddress();
       uint8_t AudioOutputChannelReceived = ESP_NOW_GetByteParam();
 
       if ( ( AddressReceived == 0 ) || ( AddressReceived == DeviceAddress ) )
       {
-        CommandAndDisplay(CommandReceived, AudioOutputChannelReceived, ValueReceived);   // process the command    
+        CommandAndDisplay(CommandReceived, AudioOutputChannelReceived, ValueReceived);       
       }
   }
 
-  if (ESP_NOW_Eight_Received() == 1)   // we have a new ESP NOW message, which receives 8 commands at the same time
+  if (ESP_NOW_Eight_Received() == 1)
   { 
-      for (uint8_t pp = 0; pp < 8; pp++)  // process these 8 commands
+      for (uint8_t pp = 0; pp < 8; pp++)
       {
         int32_t ValueReceived =   ESP_NOW_Eight_GetIntParam(pp);
         uint8_t CommandReceived = ESP_NOW_Eight_GetCommand(pp);
@@ -365,73 +400,79 @@ void loop()
 
         if ( ( AddressReceived == 0 ) || ( AddressReceived == DeviceAddress ) )
         {
-          CommandAndDisplay(CommandReceived, AudioOutputChannelReceived, ValueReceived);   // process the single command
+          CommandAndDisplay(CommandReceived, AudioOutputChannelReceived, ValueReceived);   
         }
       }
   }
 
 
-  if (Serial_Received() == 1)  // we have a new serial message
+  if (Serial_Received() == 1)
   {
     int32_t ValueReceived =   Serial_GetIntParam();
     uint8_t CommandReceived = Serial_GetCommand();
     uint8_t AudioOutputChannelReceived = Serial_GetByteParam();
-    CommandAndDisplay(CommandReceived, AudioOutputChannelReceived, ValueReceived);       // process the command
+    CommandAndDisplay(CommandReceived, AudioOutputChannelReceived, ValueReceived);       
   } 
 
 
-  Input_Loop();  // retrieve if the input module got some new commands (in that case, IR commands)
+  Input_Loop();
 
-  int8_t iChannel = Input_GetChannelOfChangedValue();  // we can get new input data on different input data channels
+  int8_t iChannel = Input_GetChannelOfChangedValue();
   if (iChannel > -1)
   {
     int32_t iValue = Input_GetValue(iChannel);
     Serial.println( String(iChannel) + ":" + String(iValue) );
 
-    if (iChannel == ICHAN_STEP_VOLUME1)   // we got the command to make a step for the volume
+    if (iChannel == ICHAN_STEP_VOLUME1)
     {
       int32_t currentVolume = Process_GetParameter(COMMAND_VOLUME, 0);
-      currentVolume = LimitValue(currentVolume + iValue, 0, 150);  // volume must stay between 0 and 150
-      CommandAndDisplay(COMMAND_VOLUME, 0, currentVolume);       // process the command
+      currentVolume = LimitValue(currentVolume + iValue, 0, 150);
+      CommandAndDisplay(COMMAND_VOLUME, 0, currentVolume);       
     }
 
-    if (iChannel == ICHAN_STEP_VOLUME2)   // we got the command to make a step for the bass-balance
+    if (iChannel == ICHAN_STEP_VOLUME2)
     {
       int32_t currentBassBalance = Process_GetParameter(COMMAND_BASSBALANCE, 0);
-      currentBassBalance = LimitValue(currentBassBalance + iValue, 50, 170); // bassbalance must stay between 50 and 170
-      CommandAndDisplay(COMMAND_BASSBALANCE, 0, currentBassBalance);    // process the command
-    }
-
-    if (iChannel == ICHAN_STEP_LOWPASS_FREQ)   // we got the command to make a step for the low pass frequency
-    {
-      int32_t currentLowPassFreq = Process_GetParameter(COMMAND_LOWPASS, 0);
-      currentLowPassFreq = LimitValue(currentLowPassFreq + iValue, 0, 200); // 
-      CommandAndDisplay(COMMAND_LOWPASS, 0, currentLowPassFreq);    // process the command
+      currentBassBalance = LimitValue(currentBassBalance + iValue, 50, 170);
+      CommandAndDisplay(COMMAND_BASSBALANCE, 0, currentBassBalance);    
     }
 
     if (iChannel == ICHAN_MODE)
     {
-      CommandAndDisplay(COMMAND_SIGNALINPUT, 0, iValue);     // we got an IR command to change the signal input
+      CommandAndDisplay(COMMAND_SIGNALINPUT, 0, iValue);   
     }
 
-    if (iChannel == ICHAN_SET)          // these IR commands are used to reset the max value, to change the display mode or to change the tuning mode
+    if (iChannel == ICHAN_SET)
     {
       if ( iValue == 1 ) CommandAndDisplay(COMMAND_MAXVALUE, 0, 0); 
-      if ( iValue == 2 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 0);  
+      if ( iValue == 2 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 0); 
       if ( iValue == 3 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 1); 
       if ( iValue == 4 ) CommandAndDisplay(COMMAND_DISPLAYMODE, 0, 2);
       if ( iValue == 5 ) 
       {
         Tuning_Mode++;
-        Tuning_Mode = CycleValue(Tuning_Mode, 1, 3);
+        Tuning_Mode = CycleValue(Tuning_Mode, 1, 2);
         CommandAndDisplay(COMMAND_TUNINGMODE, 0, Tuning_Mode);
       }
-      if ( iValue == 6 ) CommandAndDisplay(COMMAND_DISPLAYMODE2, 0, 1);
     }
 
   }
 
-  Output_EventLoop();   // the output module is triggered to react on the events
+  Output_EventLoop();
+
+
+
+
+/*
+  if ( MaxValuePosOutputChannelAux > 1000 ) 
+  {
+    digitalWrite(PIN_LED, HIGH);
+  }
+  else
+  {
+    digitalWrite(PIN_LED, LOW);
+  };
+*/
 
 }
 

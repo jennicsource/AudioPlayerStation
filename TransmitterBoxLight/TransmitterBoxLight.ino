@@ -29,41 +29,52 @@ SOFTWARE.
 #define PACKET_LENGTH_SAMPLES 16
 #define PACKET_LENGTH_BYTES   32
 
+uint8_t light = 0;
+
+int32_t samplerate = 32000; 
+
 #include "BoardPin.h"        // Board-specific pin definitions
 
 #include "Radio_nRF24.h" 
-#include "Stream_RS485.h"      
+//#include "Stream_RS485.h"   
+
+#include "Stream_Process.h"  // library for Audio processing (Volume, Filters...)
+
+#include "CoreZero.h"         // the functions which run on CoreZero are integrated here
  
 
-void setup() {
+void setup() 
+{
   Serial.begin(115200);
   delay(400);
   Serial.println("Gateway starting");
 
-  RS485_Start(UART_RX, UART_TX);  //  start UART with 3 MBit/s
+  samplerate = 32000;        // audio sample rate
 
-  pinMode(PIN_SWITCH, INPUT_PULLUP);  // switch determines if radio module sends out something or not
+  //RS485_Start(UART_RX, UART_TX);  //  start UART with 3 MBit/s
+
+  pinMode(PIN_AUX_AUDIO, OUTPUT);  // switch 
+  pinMode(PIN_AUX_AUDIO2, OUTPUT);  // switch 
+
+  //digitalWrite(PIN_SWITCH, HIGH);
 
   Radio_Init(1);                      // 1 for default channel 90, 2 for default channel 125. this must be different when you use 2 radio modules sending!
 
-  Radio_Start(1, RADIO_MODE_SENDER, pCE, pCS);   //  start radio module 1 as sender
+  Radio_Start(1, RADIO_MODE_RECEIVER, pCE, pCS);   //  start radio module 1 as sender
 
+  Serial.println("radio started");
+
+  Process_SetParameters(COMMAND_LOWPASS,        AUDIOOUTPUT_CHANNEL_AUX, 90);
+
+  StartAudioTask();   // start the task for the audio (receiving packets, processing, output to the DAC) in the Core0 module
+ 
 }
 
 
-uint8_t byteBuffer[128];
+
 
 void loop() 
 {
-      int16_t PacketNumberOrInvalid = RS485_ReadBytesInBufferGetPacketNumber(byteBuffer, 32);   // read audio data bytes from RS485 bus in byteBuffer and get the Packet number via RS485 at the same time
-
-      if ( PacketNumberOrInvalid != -1 )      // we received a valid packet
-      {
-        if ( digitalRead(PIN_SWITCH) == 1 )  Radio_WriteBytesFromBufferWithPacketNumber(byteBuffer, 32, PacketNumberOrInvalid);   //  transmit the audio data bytes and imprint the packet number in the lowest bit (this function reduces audio resolution then from 16 to 15 bit)
-        //Radio_WriteBytesFromBufferWithPacketNumber(byteBuffer, 32, PacketNumberOrInvalid);   //  transmit the audio data bytes and imprint the packet number in the lowest bit (this function reduces audio resolution then from 16 to 15 bit)
-        
-        
-        delayMicroseconds(20);
-      }
+      
 
 }

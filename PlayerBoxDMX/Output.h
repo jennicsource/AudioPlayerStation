@@ -1,5 +1,5 @@
 
-// output channels - all values to be visualized by a LED and an OLED display 
+// output channels - all values to be visualized by a LED bar or an OLED display 
 #define OCHAN_ERROR          0
 #define OCHAN_DEVICENUMBER   1
 #define OCHAN_WIFISTATUS     2
@@ -24,7 +24,6 @@
 #define OCHAN_COMPRESSOR     20
 #define OCHAN_STEREOWIDTH    21
 #define OCHAN_ROUTING        22
-#define OCHAN_TUNING_VALUE   23
 
 
 #define ERROR_ACTUATOR      1
@@ -46,7 +45,6 @@
 #define EVENT_SHOW_COMPRESSOR        12
 #define EVENT_SHOW_STEREOWIDTH       13
 #define EVENT_SHOW_ROUTING           14
-#define EVENT_SHOW_TUNING            15
 
 #define REFRESHTYPE_LEDONLY          1
 #define REFRESHTYPE_FULL             2
@@ -84,31 +82,28 @@ String TextSecondLineToBeShown = "";
 String ThirdLineToBeShown = "";
 
 uint8_t DisplayMode = 0;
-uint8_t DisplayMode2 = 1;
 
-// these are the fields on the display to visualize text or numbers
 #include "fields.h"
 
-// we also have different display pages
 #define  P_ANY         255
-#define  C_TUNING           1  // the tuning flag shows up on all display pages
+#define  C_TUNING           1
 
-#define  P_VOLUME      1         // the display page to show the volume
+#define  P_VOLUME      1
 #define  C_INPUT            3
 #define  C_VOLUME           2
 
-#define  P_MAXVALUE    2        // the page to show the max value
+#define  P_MAXVALUE    2
 #define  C_INPUT2           4
 #define  C_MAXVALUE         5
 
-#define  P_NUMBER      3         // the page to show the device number and the firmware version
+#define  P_NUMBER      3
 #define  C_NUMBER           6
 #define  C_FIRMWARE         7
 
 #define  P_PARAM       4
 #define  C_PARAM            8
 
-// set the text coordinates for all the fields
+
 void Output_SetFields()
 {
   FieldSet(C_TUNING,   P_ANY,      32, 2,  40, 20, "", 1, 2);
@@ -165,34 +160,21 @@ void Output_SetValue(int Channel, int Value)
 }
 
 
-// set the display mode
+// set the value of a certain channel to be visualized
 void Output_SetDisplayMode(int Mode)
 {
   DisplayMode = Mode;
 }
 
-// set the display mode 2
-void Output_StepDisplayMode2(int StepForMode)
-{
-  if (DisplayMode2 == 0) 
-  {
-    DisplayMode2 = 1;
-  }
-  else
-  {
-    DisplayMode2 = 0;
-  }
-}
 
-// get an output value
 int Output_GetValue(int Channel)
 {
   return Output_Value[Channel];
 }
 
 
-// helper function, shows text describing an audio parameter and the corresponding value in the display field C_PARAM
-void Display_ShowNumberP(String text, uint16_t Number)
+
+void Display_ShowNumberP(String text, uint16_t Number, String SecondLineText, String ThirdLineText)
 {
   FieldSetText(C_PARAM, text + " " + String(Number) );
   
@@ -210,20 +192,19 @@ void Output_ShowEvent(int intEvent, int EventTimeOut)
    
   if (intEvent == EVENT_MESSAGE_RECEIVED) digitalWrite(PIN_LED, HIGH); 
   
-  // if (intEvent == EVENT_SHOW_RADIO1)  Display_ShowNumber("R", 2 * Output_Value[ OCHAN_RADIO1_INDEX ] + 1); 
-  // if (intEvent == EVENT_SHOW_RADIO2)  Display_ShowNumber("R", 2 * Output_Value[ OCHAN_RADIO1_INDEX ]); 
+  // if (intEvent == EVENT_SHOW_RADIO1)  Display_ShowNumber("R", 2 * Output_Value[ OCHAN_RADIO1_INDEX ] + 1,"",""); 
+  // if (intEvent == EVENT_SHOW_RADIO2)  Display_ShowNumber("R", 2 * Output_Value[ OCHAN_RADIO1_INDEX ],"",""); 
 
-  if (intEvent == EVENT_SHOW_INPUT)        Display_ShowNumberP("I", Output_Value[OCHAN_INPUT]); 
-  if (intEvent == EVENT_SHOW_BASSBALANCE)  Display_ShowNumberP("B", Output_Value[OCHAN_BASSBALANCE]); 
-  if (intEvent == EVENT_SHOW_LOWPASS)      Display_ShowNumberP("L", Output_Value[OCHAN_LOWPASS]); 
-  if (intEvent == EVENT_SHOW_HIGHPASS)     Display_ShowNumberP("H", Output_Value[OCHAN_HIGHPASS]); 
-  if (intEvent == EVENT_SHOW_PARAMETRIC)   Display_ShowNumberP("P", Output_Value[OCHAN_PARAMETRIC]); 
-  if (intEvent == EVENT_SHOW_FILTERBANK)   Display_ShowNumberP("F", Output_Value[OCHAN_FILTERBANK]); 
-  if (intEvent == EVENT_SHOW_DELAY)        Display_ShowNumberP("D", Output_Value[OCHAN_DELAY]); 
-  if (intEvent == EVENT_SHOW_COMPRESSOR)   Display_ShowNumberP("C", Output_Value[OCHAN_COMPRESSOR]);
-  if (intEvent == EVENT_SHOW_STEREOWIDTH)  Display_ShowNumberP("S", Output_Value[OCHAN_STEREOWIDTH]);
-  if (intEvent == EVENT_SHOW_ROUTING)      Display_ShowNumberP("R", Output_Value[OCHAN_ROUTING]);
-  if (intEvent == EVENT_SHOW_TUNING)       Display_ShowNumberP("", Output_Value[OCHAN_TUNING_VALUE]);
+  if (intEvent == EVENT_SHOW_INPUT)        Display_ShowNumberP("I", Output_Value[OCHAN_INPUT],"",""); 
+  if (intEvent == EVENT_SHOW_BASSBALANCE)  Display_ShowNumberP("B", Output_Value[OCHAN_BASSBALANCE],"",""); 
+  if (intEvent == EVENT_SHOW_LOWPASS)      Display_ShowNumberP("L", Output_Value[OCHAN_LOWPASS],"",""); 
+  if (intEvent == EVENT_SHOW_HIGHPASS)     Display_ShowNumberP("H", Output_Value[OCHAN_HIGHPASS],"",""); 
+  if (intEvent == EVENT_SHOW_PARAMETRIC)   Display_ShowNumberP("P", Output_Value[OCHAN_PARAMETRIC],"",""); 
+  if (intEvent == EVENT_SHOW_FILTERBANK)   Display_ShowNumberP("F", Output_Value[OCHAN_FILTERBANK],"",""); 
+  if (intEvent == EVENT_SHOW_DELAY)        Display_ShowNumberP("D", Output_Value[OCHAN_DELAY],"",""); 
+  if (intEvent == EVENT_SHOW_COMPRESSOR)   Display_ShowNumberP("C", Output_Value[OCHAN_COMPRESSOR],"","");
+  if (intEvent == EVENT_SHOW_STEREOWIDTH)  Display_ShowNumberP("S", Output_Value[OCHAN_STEREOWIDTH],"","");
+  if (intEvent == EVENT_SHOW_ROUTING)      Display_ShowNumberP("R", Output_Value[OCHAN_ROUTING],"","");
  
 }
 
@@ -234,16 +215,16 @@ void Output_EventLoop()
 {
   if (Output_Event != 0)
   {
-    if ((millis() - Output_EventTime) > Output_EventTimeOut)  // event timed out
+    if ((millis() - Output_EventTime) > Output_EventTimeOut)
     {
         if (Output_Event == EVENT_MESSAGE_RECEIVED) 
         {
-          digitalWrite(PIN_LED, LOW);   // switch the LED off
+          digitalWrite(PIN_LED, LOW);
         }
         else
         {
           DisplayMode = 0;
-          PageChange( P_VOLUME );   // go back to Volume display page
+          PageChange( P_VOLUME ); 
         }
         Output_Event = 0;
     }
@@ -257,14 +238,14 @@ void Output_Refresh(uint8_t RefreshType)
  
   if (Output_Value[OCHAN_DATAFLOW] == 0)
   {
-    digitalWrite(PIN_LED, HIGH);     // visualize a bad data flow
+    digitalWrite(PIN_LED, HIGH); 
   }
   else
   {
-    if (Output_Event != EVENT_MESSAGE_RECEIVED) digitalWrite(PIN_LED, LOW);   // visualize a good data flow, but switch the LED just off if it doesnt show an event at the moment
+    if (Output_Event != EVENT_MESSAGE_RECEIVED) digitalWrite(PIN_LED, LOW); 
   }   
   
-  if (RefreshType == REFRESHTYPE_FULL)  // full display refresh
+  if (RefreshType == REFRESHTYPE_FULL)
   {
     Output_EventLoop();
 
@@ -273,33 +254,32 @@ void Output_Refresh(uint8_t RefreshType)
       if (Output_Value[OCHAN_ERROR] == 0)
       {
           FieldSetText( C_TUNING, "" );
-          if ( Output_Value[OCHAN_TUNING] == 2 ) FieldSetText( C_TUNING, "TUNING" );   // show the tuning flag in the display field C_TUNING
-          if ( Output_Value[OCHAN_TUNING] == 1 ) FieldSetText( C_TUNING, "DRIFT" );   // show the tuning flag in the display field C_TUNING
+          if ( Output_Value[OCHAN_TUNING] == 2 ) FieldSetText( C_TUNING, "TUNING" );
 
-          if ( Output_Value[OCHAN_INPUT] == SIGNAL_AIR )          FieldSetText( C_INPUT, "Air" );    // show the audio signal input in its display field
+          if ( Output_Value[OCHAN_INPUT] == SIGNAL_AIR )          FieldSetText( C_INPUT, "Air" ); 
           if ( Output_Value[OCHAN_INPUT] == SIGNAL_DIGITAL )      FieldSetText( C_INPUT, "RS485" ); 
           if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_MONO )    FieldSetText( C_INPUT, "Test_M" ); 
           if ( Output_Value[OCHAN_INPUT] == SIGNAL_TEST_STEREO )  FieldSetText( C_INPUT, "Test_S" ); 
 
-          FieldSetText( C_INPUT2, FieldGetText( C_INPUT ) );       // there is another display field showing the signal input, so show the input there as well
+          FieldSetText( C_INPUT2, FieldGetText( C_INPUT ) );
 
-          FieldSetText( C_VOLUME,   "V " + String( Output_Value[OCHAN_LEVEL_VOLUME1] ) );      // show the volume in its display field
-          FieldSetText( C_MAXVALUE, String( Output_Value[OCHAN_MAXVALUE_LEFT] ) + "/" + String( Output_Value[OCHAN_MAXVALUE_RIGHT] ) );  // show the max value in its display field
-          FieldSetText( C_NUMBER,   "#" + String( Output_Value[OCHAN_DEVICENUMBER] ) );   // show the device number in its display field
+          FieldSetText( C_VOLUME,   "V " + String( Output_Value[OCHAN_LEVEL_VOLUME1] ) );
+          FieldSetText( C_MAXVALUE, String( Output_Value[OCHAN_MAXVALUE_LEFT] ) + "/" + String( Output_Value[OCHAN_MAXVALUE_RIGHT] ) );
+          FieldSetText( C_NUMBER,   "#" + String( Output_Value[OCHAN_DEVICENUMBER] ) );
 
           if (DisplayMode == 0)
           { 
-            PageChange( P_VOLUME );  // show the volume display page with all its fields
+            PageChange( P_VOLUME );
           }
 
           if (DisplayMode == 1)
           {
-            PageChange( P_MAXVALUE );  // show the max signal input value page with all its fields
+            PageChange( P_MAXVALUE );
           }
 
           if (DisplayMode == 2)
           {
-           PageChange( P_NUMBER  );  // show the device number display page with all its fields
+           PageChange( P_NUMBER  );
           }
       }
       else

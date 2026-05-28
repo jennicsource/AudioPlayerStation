@@ -7,11 +7,10 @@
 #define ICHAN_MODE            2
 #define ICHAN_ROUTING         3
 #define ICHAN_SET             4
-#define ICHAN_STEP_LOWPASS_FREQ  5
 
 
 
-// Buttons are mapped on 8 Input Channels (these are not audio but data input channels!)
+// Buttons are mapped on 8 Input Channels
 
 #define INPUT_VALUES_MAX   8
 
@@ -21,25 +20,25 @@ int Input_Value[INPUT_VALUES_MAX];
 bool Input_Value_Changed[INPUT_VALUES_MAX];
 String Input_Path[INPUT_VALUES_MAX];
 
-// call this function once at startup
+
 void Input_Init()
 {
  
-  IRReceiver_Init(PIN_IR);  // setup the IR receiver
+  IRReceiver_Init(PIN_IR);
  
   for (int m = 0; m < INPUT_VALUES_MAX ; m++)
   {
-    Input_Value_Changed[m] =    false;   // initialize input channels
+    Input_Value_Changed[m] =    false;
   }
 }
 
-// not used here
+
 void Input_SetPath(int Channel, String Path)
 {
   Input_Path[Channel] = Path;
 }
 
-// get the value received on one input channel 
+
 int Input_GetValue(int Channel)
 {
   Input_Value_Changed[Channel] = false;
@@ -47,7 +46,7 @@ int Input_GetValue(int Channel)
   return Input_Value[Channel];
 }
 
-// retrieve the input channel which got the new data
+
 int8_t Input_GetChannelOfChangedValue()
 {
   int8_t Result = -1;
@@ -64,57 +63,45 @@ int8_t Input_GetChannelOfChangedValue()
 }
 
 
-// call this function regularly
+
 void Input_Loop()
 {
-  unsigned int IRCode = IRReceiver_Loop();  // get the IRcode (4 bytes) received via the IRreceiver library
+  unsigned int IRCode = IRReceiver_Loop();
+
+  //unsigned int IRCode = 0;
   
   if (IRCode > 0) 
   {
     //Serial.println(IRCode);
     
-    if (IRCode == 0xE0E0E01F)  //  volume up on the samsung remote control
+    if (IRCode == 0xE0E0E01F)
     {
         //Serial.println("Vol_A_+");
         Input_Value[ICHAN_STEP_VOLUME1] = 10;
         Input_Value_Changed[ICHAN_STEP_VOLUME1] = true;
     }
 
-     if (IRCode == 0xE0E0D02F)  // volume down
+     if (IRCode == 0xE0E0D02F)
     {
         //Serial.println("Vol_A_-");
         Input_Value[ICHAN_STEP_VOLUME1] = -10;
         Input_Value_Changed[ICHAN_STEP_VOLUME1] = true;
     }
 
-    if (IRCode == 0xE0E048B7)  // channel up on the samsung remote control
+    if (IRCode == 0xE0E048B7)
     {
         //Serial.println("Vol_B_+");
         Input_Value[ICHAN_STEP_VOLUME2] = 10;
         Input_Value_Changed[ICHAN_STEP_VOLUME2] = true;
     }
 
-    if (IRCode == 0xE0E008F7)   // channel down
+    if (IRCode == 0xE0E008F7)
     {
         //Serial.println("Vol_B_-");
         Input_Value[ICHAN_STEP_VOLUME2] = -10;
         Input_Value_Changed[ICHAN_STEP_VOLUME2] = true;
     }
 
-    if (IRCode == 3772819033)   // menu left
-    {
-        Input_Value[ICHAN_STEP_LOWPASS_FREQ] = -10;
-        Input_Value_Changed[ICHAN_STEP_LOWPASS_FREQ] = true;
-    }
-
-    if (IRCode == 3772794553)   // menu right
-    {
-        Input_Value[ICHAN_STEP_LOWPASS_FREQ] = 10;
-        Input_Value_Changed[ICHAN_STEP_LOWPASS_FREQ] = true;
-    }
-
-
-    // key 1 to 5 is used to set the audio signal input
     if (IRCode == 3772784863)   //   Key 1
     {
         Input_Value[ICHAN_MODE] = 1;
@@ -145,14 +132,12 @@ void Input_Loop()
         Input_Value_Changed[ICHAN_MODE] = true;
     }
 
-    // key 0 is ued to set the signal input max value to 0
     if (IRCode == 3772811383)   //   Key 0
     {
         Input_Value[ICHAN_SET] = 1;
         Input_Value_Changed[ICHAN_SET] = true;
     }
-    
-    // key 7 to 9 is used to set the display mode
+
     if (IRCode == 3772788943)   //   Key 7
     {
         Input_Value[ICHAN_SET] = 2;
@@ -171,19 +156,13 @@ void Input_Loop()
         Input_Value_Changed[ICHAN_SET] = true;
     }
 
-    // key 6 is used to switch the tuning mode
     if (IRCode == 3772797103)   //   Key 6
     {
         Input_Value[ICHAN_SET] = 5;
         Input_Value_Changed[ICHAN_SET] = true;
     }
 
-    // key GUIDE is used to switch the LED mode
-    if (IRCode == 3772838413)   //   Key GUIDE
-    {
-        Input_Value[ICHAN_SET] = 6;
-        Input_Value_Changed[ICHAN_SET] = true;
-    }
+
 
   }
 

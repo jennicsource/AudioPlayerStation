@@ -7,7 +7,6 @@ int16_t mBuffer[PACKET_LENGTH_SAMPLES];
 int16_t mBuffer2[PACKET_LENGTH_SAMPLES];
 int16_t zeroBuffer[PACKET_LENGTH_SAMPLES] = {0};
 int32_t exmBuffer[32];
-int32_t zeroexmBuffer[32] = {0};
 
 uint8_t byteBuffer[128]; 
 int16_t musicBuffer[32];
@@ -20,20 +19,6 @@ TaskHandle_t UARTTaskHandle = NULL;
 uint8_t SetupDone = 0;                // the tasks contain endless loops. if you want to do something just at the start, you must set this flag afterwards, and the setup wont be processed again
 int32_t lastWatchdogReset = 0;        // needed to regularly reset the watchdog
 
-
-
-
-uint8_t LastPacketNumber;
-uint8_t PacketNumber;
-int32_t LastFullPacketNumber;
-
-int32_t OverflowPacketNumber;
-
-int32_t LastCValue = 0;
-uint8_t ValidPacket;
-
-
-uint8_t PacketReceivingModule;
 
 
 void UARTTask(void *parameter)         // one of the tasks running on Core 0
@@ -52,13 +37,14 @@ void UARTTask(void *parameter)         // one of the tasks running on Core 0
     }
     else
     {
-      delay(1);
-    };    
+      delay(1);   // in case of the input is not configured to RS485/UART, you must do something else, otherwise the program crashes
+    }
   }
 }
 
 
-uint8_t AuxParam = 0;
+uint8_t LastPacketNumber;
+
 
 void AudioTask(void *parameter)    // the task for Audio processing
 {
@@ -82,100 +68,112 @@ void AudioTask(void *parameter)    // the task for Audio processing
         Serial.println("TUNING - in ppb: " + String(TuneResult) );   
         Config_SetValue(CCHAN_CORRECTION, CurrentCorrection);       // put the new correction factor to the Config module
         Config_StoreValues();                                       // and store the new value in the non-volatile memory
-        
-        Output_SetValue( OCHAN_TUNING_VALUE, CurrentCorrection );
-        Output_ShowEvent( EVENT_SHOW_TUNING, 2000 ); 
       };
        
 
       if (SignalInput == SIGNAL_AIR)        // input via wireless transmission
       {  
-        PacketReceivingModule = Radio_PacketCheckDual();    // check if packet was received  
+        uint8_t PacketReceivingModule = Radio_PacketCheckDual();    // check if packet was received  
+        
+        /*
+        uint8_t BothModulesProblems = 0;
+        if (PacketReceivingModule > 10) 
+        {
+          PacketReceivingModule = PacketReceivingModule - 10;
+          BothModulesProblems = 1;
+        }
+        */
 
-        if ( PacketReceivingModule == 1  || PacketReceivingModule == 2 )  // packet received by module 1 or 2
+        Output_ShowValue(OCHAN_ACTIVE_MODULE, PacketReceivingModule);   // visualize the active radio module via an LED
+
+        /*       
+        if (BothModulesProblems == 1)  // no packet received
         {         
-          PacketNumber = (uint32_t)Radio_ReadSamplesInBufferGetPacketNumber(PacketReceivingModule, mBuffer, PACKET_LENGTH_SAMPLES);  // read the data from the radio module 1 or 2 and get the packet number
+          uint8_t PacketNumber = Radio_ReadSamplesInBufferGetPacketNumber(PacketReceivingModule, mBuffer, PACKET_LENGTH_SAMPLES);  // read the data from radio module 1
 
-          if ( LastPacketNumber > PacketNumber ) OverflowPacketNumber++;  // packetnumbers are from 0..255 (8 bit). so we must look for overflows
-          LastPacketNumber = PacketNumber;
-          
-          int32_t FullPacketNumber = ( OverflowPacketNumber << 8 ) + PacketNumber;   // that is the ongoing 31 bit packet number. so after around 70 hours, we will also have an overflow here
-          int32_t PacketNumberDifference = FullPacketNumber - LastFullPacketNumber;  // determine the difference to the last packet number we received
+          Process_Process(zeroBuffer, exmBuffer, 16);
+          I2S_WriteSamplesFromBuffer32(exmBuffer, 16);     // output the data to the DAC
 
-          if ( PacketNumberDifference == 1 )
+          //Sync_WritePacketNumberTestPacketCounterOnOverflow( PacketNumber );   // write the packetnumber (0..255) to the tuning function, which also checks the overflow
+        }
+        */
+        
+        if ( PacketReceivingModule == 1  || PacketReceivingModule == 2 )  // packet received by module 1
+        {         
+          uint16_t PacketNumber = (uint16_t)Radio_ReadSamplesInBufferGetPacketNumber(PacketReceivingModule, mBuffer, PACKET_LENGTH_SAMPLES);  // read the data from radio module 1
+
+          uint16_t OverflowPacketNumber = PacketNumber;
+          if ( LastPacketNumber > ( PacketNumber + 10 ) ) OverflowPacketNumber = 256 + PacketNumber;
+          int16_t PacketNumberDifference = OverflowPacketNumber - LastPacketNumber;
+
+          //Serial.println(PacketNumberDifference);
+
+          if ( PacketNumberDifference < 1 )
           {
-            Output_ShowValue(OCHAN_DATAFLOW, 1);      // everything is good. visualize this via the output module (in that case, a blue LED is off)
-            //digitalWrite(PIN_LED, LOW); 
+            Process_Process(zeroBuffer, exmBuffer, 16);
+            LastPacketNumber = PacketNumber + 1;
+            Serial.println(PacketNumberDifference);
           }
-          
-          if ( ( PacketNumberDifference < 3 ) && ( PacketNumberDifference > 0 ) )   // that is still a good reception
+          else
           {
-            ValidPacket = 1;
-            Process_Process(mBuffer, exmBuffer, 16);    // send the data to the audio processing module 
-            AuxParam = Process_GetAuxParameter(); 
+            Process_Process(mBuffer, exmBuffer, 16);
+            LastPacketNumber = PacketNumber;
           }
 
-          LastFullPacketNumber = FullPacketNumber;
+          I2S_WriteSamplesFromBuffer32(exmBuffer, 16);     // output the data to the DAC
 
           Sync_WritePacketNumberTestPacketCounterOnOverflow( PacketNumber );   // write the packetnumber (0..255) to the tuning function, which also checks the overflow
         }
 
-        int32_t CValue = Sync_GetPinCounterValue();   // we take the pin counter (word clock frequency) to measure the time
-        if ( ( CValue - LastCValue ) > 8 )   // if we did not get a new valid packet in the 8 word clocks timeframe, the packet is late or disturbed
-        {
-          if ( ValidPacket == 0 )
-          {
-            memcpy(exmBuffer, zeroexmBuffer, 64);   // then we send zeroes to the music buffer, instead of bad data or old data
-            Output_ShowValue(OCHAN_DATAFLOW, 0);    // and visualize via the output module that the dataflow is bad (in that case, a blue LED is on)
-          }
-          else
-          {
-            ValidPacket = 0;
-          }
-          LastCValue = CValue;
-        }
+/*
+        if (PacketReceivingModule == 2) // // packet received by module 2
+        {         
+          uint8_t PacketNumber = Radio_ReadSamplesInBufferGetPacketNumber(2, mBuffer2, PACKET_LENGTH_SAMPLES); // read the data from radio module 2
 
-        I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // and at the end, we write the data to the I2S driver to let them output via the DAC
-        
-        if (DisplayMode2 == 1)
-        {
-          if (AuxParam == 255)
+          if ( ( (PacketNumber - LastPacketNumber) != 1 ) && ( !( (PacketNumber == 0 ) && ( LastPacketNumber == 255 ) ) ) )
           {
-            digitalWrite(PIN_AUX_AUDIO, HIGH);
+            Process_Process(zeroBuffer, exmBuffer, 16);
           }
           else
           {
-            digitalWrite(PIN_AUX_AUDIO, LOW);
+            Process_Process(mBuffer2, exmBuffer, 16);
           }
+
+          I2S_WriteSamplesFromBuffer32(exmBuffer, 16);    // output the data to the DAC
+
+          Sync_WritePacketNumberTestPacketCounterOnOverflow( PacketNumber );   // write the packetnumber (0..255) to the tuning function, which also checks the overflow
+
+          LastPacketNumber = PacketNumber;
         }
+*/
 
       }
 
 
-      if (SignalInput == SIGNAL_TEST_MONO)     // generates the same triangle test signal on both input channels
+      if (SignalInput == SIGNAL_TEST_MONO)  
       {
         TestSignal_SetType(TESTSIGNAL_TRIANGLE_MONO);
         TestSignal_ReadSamplesInBuffer(mBuffer, 16);
         
-        Process_Process(mBuffer, exmBuffer, 16);  // process the data
-        I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // and send it to the DAC
+        Process_Process(mBuffer, exmBuffer, 16);
+        I2S_WriteSamplesFromBuffer32(exmBuffer, 16); 
       }  
 
 
-      if (SignalInput == SIGNAL_TEST_STEREO)  // generates the 2 different triangle test signals on both input channels
+      if (SignalInput == SIGNAL_TEST_STEREO) 
       {
         TestSignal_SetType(TESTSIGNAL_TRIANGLE_STEREO);
         TestSignal_ReadSamplesInBuffer(mBuffer, 16);
         
-        Process_Process(mBuffer, exmBuffer, 16);  // process the data
-        I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // and send it to the DAC
+        Process_Process(mBuffer, exmBuffer, 16);
+        I2S_WriteSamplesFromBuffer32(exmBuffer, 16); 
       }  
 
 
       if (SignalInput == SIGNAL_DIGITAL)     // input via wireless transmission
       { 
         memcpy(mBuffer, byteBuffer, 32);     // the data are put regularly in the byteBuffer by the UARTtask
-        Process_Process(mBuffer, exmBuffer, 16);   // process the data
+        Process_Process(mBuffer, exmBuffer, 16);
         I2S_WriteSamplesFromBuffer32(exmBuffer, 16);   // put the data to the DAC
       }  
 
@@ -202,7 +200,7 @@ void StartUARTTask()
  xTaskCreatePinnedToCore(
     UARTTask,         // Task function
     "UARTTask",       // Task name
-    100000,             // Stack size (bytes)
+    10000,             // Stack size (bytes)
     NULL,              // Parameters
     1,                 // Priority
     &UARTTaskHandle,  // Task handle

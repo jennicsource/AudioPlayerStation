@@ -58,12 +58,9 @@ MISO IR          orange
 #define I2C_SDA       16
 #define I2C_SCL       15
 
-//#define PIN_LED       18
+
 #define PIN_LED         42   // pin for the attached LED
-
 #define PIN_IR          7    // pin for the attached IR receiver
-
-#define PIN_AUX_AUDIO   42   // pin which should be switched
 
 
 // this is for the XIAO ESP32-S3 board
