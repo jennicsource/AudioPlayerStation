@@ -169,6 +169,7 @@ int32_t CycleValue(int32_t CurrentValue, int32_t LowerLimit, int32_t UpperLimit)
 int32_t CurrentMaxValueInputLeft;
 int32_t CurrentMaxValueInputRight;
 
+
 // these commands can be sent by the remote control, but are outside the audio processing
 #define COMMAND_SIGNALINPUT  73   // I
 #define COMMAND_DISPLAYMODE  89   // Y

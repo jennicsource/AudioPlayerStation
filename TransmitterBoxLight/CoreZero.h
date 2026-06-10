@@ -91,16 +91,76 @@ void AudioTask(void *parameter)    // the task for Audio processing
         Process_Process(mBuffer, exmBuffer, 16);
         AuxParam = Process_GetAuxParameter(); 
 
-        if (AuxParam == 255)
+        if (ColorMode == 0)
         {
-          digitalWrite(PIN_AUX_AUDIO2, HIGH);
-          digitalWrite(PIN_AUX_AUDIO, LOW);
+          if (AuxParam == 255)
+          {
+            digitalWrite(PIN_AUX_AUDIO2, LOW);
+            digitalWrite(PIN_AUX_AUDIO, LOW);
+          }
+          else
+          {
+            digitalWrite(PIN_AUX_AUDIO2, LOW);
+            digitalWrite(PIN_AUX_AUDIO, LOW);
+          }
         }
-        else
+
+        if (ColorMode == 1)
         {
-          digitalWrite(PIN_AUX_AUDIO2, LOW);
-          digitalWrite(PIN_AUX_AUDIO, HIGH);
+          if (AuxParam == 255)
+          {
+            digitalWrite(PIN_AUX_AUDIO2, LOW);
+            digitalWrite(PIN_AUX_AUDIO, HIGH);
+          }
+          else
+          {
+            digitalWrite(PIN_AUX_AUDIO2, LOW);
+            digitalWrite(PIN_AUX_AUDIO, LOW);
+          }
         }
+
+        if (ColorMode == 2)
+        {
+          if (AuxParam == 255)
+          {
+            digitalWrite(PIN_AUX_AUDIO2, HIGH);
+            digitalWrite(PIN_AUX_AUDIO, LOW);
+          }
+          else
+          {
+            digitalWrite(PIN_AUX_AUDIO2, LOW);
+            digitalWrite(PIN_AUX_AUDIO, LOW);
+          }
+        }
+
+        if (ColorMode == 3)
+        {
+          if (AuxParam == 255)
+          {
+            digitalWrite(PIN_AUX_AUDIO2, HIGH);
+            digitalWrite(PIN_AUX_AUDIO, HIGH);
+          }
+          else
+          {
+            digitalWrite(PIN_AUX_AUDIO2, LOW);
+            digitalWrite(PIN_AUX_AUDIO, LOW);
+          }
+        }
+
+        if (ColorMode == 4)
+        {
+          if (AuxParam == 255)
+          {
+            digitalWrite(PIN_AUX_AUDIO2, HIGH);
+            digitalWrite(PIN_AUX_AUDIO, LOW);
+          }
+          else
+          {
+            digitalWrite(PIN_AUX_AUDIO2, LOW);
+            digitalWrite(PIN_AUX_AUDIO, HIGH);
+          }
+        }
+
       }
       
 
