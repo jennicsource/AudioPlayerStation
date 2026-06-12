@@ -52,7 +52,7 @@ uint8_t ColorMode = 1;
 void setup() 
 {
   Serial.begin(115200);
-  delay(400);
+  delay(100);
   Serial.println("Gateway starting");
 
   samplerate = 32000;        // audio sample rate
@@ -73,6 +73,12 @@ void setup()
   Serial.println("radio started");
 
   Process_SetParameters(COMMAND_LOWPASS,        AUDIOOUTPUT_CHANNEL_AUX, 90);
+
+  digitalWrite(PIN_AUX_AUDIO2, HIGH);
+  digitalWrite(PIN_AUX_AUDIO, HIGH);
+  delay(400);
+  digitalWrite(PIN_AUX_AUDIO2, LOW);
+  digitalWrite(PIN_AUX_AUDIO, LOW);
 
   StartAudioTask();   // start the task for the audio (receiving packets, processing, output to the DAC) in the Core0 module
  
