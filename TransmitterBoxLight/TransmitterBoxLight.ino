@@ -45,9 +45,22 @@ int32_t samplerate = 32000;
 
 uint8_t DeviceAddress = 1;
 uint8_t ColorMode = 1;
+uint8_t SignalFlag = 0;
 
 #include "CoreZero.h"         // the functions which run on CoreZero are integrated here
- 
+
+
+void ShortLightSignal()
+{
+  SignalFlag = 1;
+  digitalWrite(PIN_AUX_AUDIO2, HIGH);
+  digitalWrite(PIN_AUX_AUDIO, HIGH);
+  delay(500);
+  digitalWrite(PIN_AUX_AUDIO2, LOW);
+  digitalWrite(PIN_AUX_AUDIO, LOW);
+  SignalFlag = 0;
+}
+
 
 void setup() 
 {
@@ -72,13 +85,9 @@ void setup()
 
   Serial.println("radio started");
 
-  Process_SetParameters(COMMAND_LOWPASS,        AUDIOOUTPUT_CHANNEL_AUX, 90);
+  Process_SetParameters(COMMAND_LOWPASS, AUDIOOUTPUT_CHANNEL_AUX, 80);
 
-  digitalWrite(PIN_AUX_AUDIO2, HIGH);
-  digitalWrite(PIN_AUX_AUDIO, HIGH);
-  delay(400);
-  digitalWrite(PIN_AUX_AUDIO2, LOW);
-  digitalWrite(PIN_AUX_AUDIO, LOW);
+  ShortLightSignal();
 
   StartAudioTask();   // start the task for the audio (receiving packets, processing, output to the DAC) in the Core0 module
  
@@ -120,15 +129,15 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
         case COMMAND_DELAY:
             ValueReceived = LimitValue(ValueReceived, 0, 2000);    // Limit delay parameter to 0..2000
             currentValue = Process_SetParameters(CommandReceived, AudioOutputChannelReceived, ValueReceived);  // set new delay
- 
-            ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_DELAY, AudioOutputChannelReceived, currentValue );  
+            ShortLightSignal();
+            //ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_DELAY, AudioOutputChannelReceived, currentValue );  
           break;
 
         case COMMAND_STEREOWIDTH:
             ValueReceived = LimitValue(ValueReceived, -100, 200);
             currentValue = Process_SetParameters(CommandReceived, AudioOutputChannelReceived, ValueReceived);
-         
-            ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_STEREOWIDTH, AudioOutputChannelReceived, currentValue );
+            ShortLightSignal();
+            //ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_STEREOWIDTH, AudioOutputChannelReceived, currentValue );
           break;
 
         
@@ -138,33 +147,34 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
             ValueReceived = LimitValue(ValueReceived, 20, 200);     // and it must stay between 20 and 200 Hz
            
             currentValue = Process_SetParameters(CommandReceived, AudioOutputChannelReceived, ValueReceived);
-
-            delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
-            ESP_NOW_Send_Command( 0, 100 + COMMAND_LOWPASS, AudioOutputChannelReceived, currentValue );            
+            ShortLightSignal();
+            //delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
+            //ESP_NOW_Send_Command( 0, 100 + COMMAND_LOWPASS, AudioOutputChannelReceived, currentValue );            
           break;
 
         case COMMAND_RATIO:
             ValueReceived = LimitValue(ValueReceived, 10, 100);     // 
            
             currentValue = Process_SetParameters(CommandReceived, 0, ValueReceived);
-
-            delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
-            ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_RATIO, 0, currentValue );            
+            ShortLightSignal();
+            //delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
+            //ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_RATIO, 0, currentValue );            
           break;
 
         case COMMAND_DISPLAYMODE:
             ColorMode = LimitValue(ValueReceived, 0, 4);
-            
-            delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
-            ESP_NOW_Send_Command(  DeviceAddress, 100 + COMMAND_DISPLAYMODE, 0, ColorMode );        
+            ShortLightSignal();
+            //delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
+            //ESP_NOW_Send_Command(  DeviceAddress, 100 + COMMAND_DISPLAYMODE, 0, ColorMode );        
           break;
 
         case COMMAND_DISPLAYMODE2:
-            
+            ShortLightSignal();
           break;
 
         case COMMAND_FILTERBANK:
             currentValue = Process_SetParameters(COMMAND_FILTERBANK, 0, LimitValue(ValueReceived, 0, 2) );
+            ShortLightSignal();
           break;
 
         //default:
