@@ -56,6 +56,8 @@ void setup() {
 
     delay(20);
 
+    //setupBareMetalFastTx();
+
 }
 
 
@@ -122,6 +124,10 @@ void processcommand(uint8_t pcommand, uint8_t pvalue)
     if (pvalue == 32)  PacketGoodPinTime = 125;
 
     Serial.println( String("packet: ") + String(StreamPacketBytes) );
+
+    setupBareMetalFastTx();
+
+    Serial.println( String("32 byte set") );
     //Serial.println( String("mode: ") + String(RadioMode) );
     //Serial.println( String("channel: ") + String(RadioChannel) );
   }   
@@ -243,13 +249,9 @@ void loop() {
 
       processcommand(paramcommand, paramvalue);    
 
-      delayMicroseconds(10);
+      delayMicroseconds(20);
 
       if (paramcommand == 0) recflag = 1;
-
-      mTime = micros();
-      // Serial.println( mTime - lTime );
-      lTime = mTime;
 
       
     };
@@ -264,6 +266,9 @@ void loop() {
       
       Radio_WriteBytesFromBufferWithPacketNumber( bBuffer, StreamPacketBytes, (int16_t)SPIPacketIn.packetnumber );  
 
+      mTime = micros();
+      //Serial.println( mTime - lTime );
+      lTime = mTime;
 
       memcpy( mcBuffer, bBuffer, StreamPacketBytes );
       sum = 0;
