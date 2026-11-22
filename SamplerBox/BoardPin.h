@@ -21,4 +21,8 @@
 
 #define PIN_SWITCH     5   // switch connected to GPIO5
 
+#define PIN_LED     7   // LED connected to GPIO7
+
+#define PIN_POT     4   // potentiometer connected to GPIO4
+
 

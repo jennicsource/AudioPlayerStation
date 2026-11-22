@@ -136,6 +136,8 @@ void Output_Init()
   // in that case, we initiate a LED which is active high
   pinMode(PIN_LED, OUTPUT);
   digitalWrite(PIN_LED, LOW); 
+  pinMode(PIN_AUX_AUDIO, OUTPUT);
+  digitalWrite(PIN_AUX_AUDIO, LOW); 
   
   if ( !oled.begin(SCREEN_ADDRESS, true) ) 
   { 

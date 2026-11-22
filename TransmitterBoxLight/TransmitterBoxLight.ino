@@ -43,7 +43,7 @@ int32_t samplerate = 32000;
 #include "ESP_NOW_Control.h"  // library for remote control via ESP-NOW
 #include "Serial_Control.h"   // library for remote control via Serial interface
 
-uint8_t DeviceAddress = 1;
+uint8_t DeviceAddress = 9;
 uint8_t ColorMode = 1;
 uint8_t SignalFlag = 0;
 
@@ -156,14 +156,14 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
             ValueReceived = LimitValue(ValueReceived, 10, 100);     // 
            
             currentValue = Process_SetParameters(CommandReceived, 0, ValueReceived);
-            ShortLightSignal();
+            //ShortLightSignal();
             //delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
             //ESP_NOW_Send_Command( DeviceAddress, 100 + COMMAND_RATIO, 0, currentValue );            
           break;
 
         case COMMAND_DISPLAYMODE:
             ColorMode = LimitValue(ValueReceived, 0, 4);
-            ShortLightSignal();
+            //ShortLightSignal();
             //delay(DeviceAddress * 50 + 70);  // this command is working on multiple player boxes, so all player boxes will send an answer
             //ESP_NOW_Send_Command(  DeviceAddress, 100 + COMMAND_DISPLAYMODE, 0, ColorMode );        
           break;

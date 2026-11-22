@@ -62,7 +62,7 @@ String FirmwareVersion = "V 0.75";
 
 
 uint8_t DeviceAddress = 1;    // Device Address, will be configured by DIP switch
-uint8_t Tuning_Mode = 1;      // Tuning Mode: 1 = just to prevent drift, max adaption for correction factor = 1000 ; 2: max adaption = 20000; 3: no sync
+uint8_t Tuning_Mode = 2;      // Tuning Mode: 1 = just to prevent drift, max adaption for correction factor = 1000 ; 2: max adaption = 20000; 3: no sync
 
 
 // === INITIALIZATION (Runs Once at Startup) ===
@@ -137,8 +137,8 @@ void setup()
 
   I2S_Clock_Init(SAMPLERATE_INDEX_32KHZ_32BIT, CurrentCorrection);   // start the clock with the current correction
 
-  Sync_Init(8);    // Initialize Live-Tuning with a GateTimeFactor of 8 = 1250000 packets
-  Sync_SetMaxAdaption(1000);
+  Sync_Init(8);    // Initialize Live-Tuning with a GateTimeFactor of 8 = 125000 packets
+  Sync_SetMaxAdaption(20000);
   
   StartUARTTask();    // start the task for the UART/RS485 receiving of packets in the Core0 module
   StartAudioTask();   // start the task for the audio (receiving packets, processing, output to the DAC) in the Core0 module
@@ -306,7 +306,7 @@ void CommandAndDisplay(uint8_t CommandReceived, uint8_t AudioOutputChannelReceiv
         case COMMAND_TUNINGMODE:
             if (Tuning_Mode == 1) Sync_SetMaxAdaption(1000);     // tuning mode with only small steps allowed (for temp drift)
             if (Tuning_Mode == 2) Sync_SetMaxAdaption(40000);    // tuning mode to tune to a new sender. big steps are allowed
-            if (Tuning_Mode == 3) Sync_SetMaxAdaption(0);    // tuning mode to tune to a new sender. big steps are allowed
+            if (Tuning_Mode == 3) Sync_SetMaxAdaption(0);        // no steps are allowed
             Output_SetValue( OCHAN_TUNING, Tuning_Mode );
             Output_Refresh(REFRESHTYPE_FULL);
             //Serial.println(Tuning_Mode);
