@@ -30,6 +30,7 @@ uint8_t     StreamPacketBytes = 128;
 uint16_t    PacketGoodPinTime = 500;
 uint8_t     RadioChannel      = 10;
 uint8_t     RadioMode         = 0;
+uint16_t    SampleRate        = 32000;
 
 
 void setup() {
@@ -62,12 +63,28 @@ void setup() {
 
 
 
-
 #define COMMAND_NONE               0
 #define COMMAND_RADIOCHANNEL       65
 #define COMMAND_ANTENNA            66
 #define COMMAND_MODE               67
 #define COMMAND_PACKETLENGTH       70
+#define COMMAND_SAMPLERATE         71
+
+void CalculatePacketGoodPinTime()
+{
+  if (SampleRate == 32000)
+  {
+    if (StreamPacketBytes == 128) PacketGoodPinTime = 500;
+    if (StreamPacketBytes == 64)  PacketGoodPinTime = 250;
+    if (StreamPacketBytes == 32)  PacketGoodPinTime = 125;
+  }
+  if (SampleRate == 44100)
+  {
+    if (StreamPacketBytes == 128) PacketGoodPinTime = 363;
+    if (StreamPacketBytes == 64)  PacketGoodPinTime = 181;
+    if (StreamPacketBytes == 32)  PacketGoodPinTime = 91;
+  }
+}
 
 void processcommand(uint8_t pcommand, uint8_t pvalue) 
 {
@@ -109,6 +126,16 @@ void processcommand(uint8_t pcommand, uint8_t pvalue)
     //digitalWrite(LED_PIN, HIGH);
     
     Serial.println( String("antenna: ") + String(pvalue) );
+  }   
+
+  if ( pcommand == COMMAND_SAMPLERATE ) 
+  {
+    if ( pvalue == 0 ) SampleRate = 32000;   //  external antenna
+    if ( pvalue == 1 ) SampleRate = 44100;    //  internal antenna 
+
+    CalculatePacketGoodPinTime();
+
+    Serial.println( String("samplerate: ") + String(SampleRate) );
   }      
 
   if ( pcommand == COMMAND_PACKETLENGTH ) 
@@ -119,15 +146,15 @@ void processcommand(uint8_t pcommand, uint8_t pvalue)
 
     SPI_Slave_Init( StreamPacketBytes + 4 );
 
-    if (pvalue == 128) PacketGoodPinTime = 500;
-    if (pvalue == 64)  PacketGoodPinTime = 250;
-    if (pvalue == 32)  PacketGoodPinTime = 125;
+    CalculatePacketGoodPinTime();
 
     Serial.println( String("packet: ") + String(StreamPacketBytes) );
 
-    setupBareMetalFastTx();
-
-    Serial.println( String("32 byte set") );
+    if (pvalue == 32) 
+    { 
+      setupBareMetalFastTx();
+      Serial.println( String("32 byte set") );
+    }
     //Serial.println( String("mode: ") + String(RadioMode) );
     //Serial.println( String("channel: ") + String(RadioChannel) );
   }   
